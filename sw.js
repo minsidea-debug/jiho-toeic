@@ -1,6 +1,6 @@
 /* 오프라인 실행용 서비스워커 (인터넷 주소로 열었을 때만 동작)
    파일을 수정하면 VERSION 숫자를 올려주세요. */
-const VERSION = 'jiho-toeic-202611240030'; // VERSION:AUTO
+const VERSION = 'jiho-toeic-202611240040'; // VERSION:AUTO
 const FILES = [
   './', './index.html', './css/style.css', './data/quotes.js', './js/store.js', './js/sound.js', './js/app.js', './js/words.js',
   './data/part5.js', './data/part6.js', './data/part7.js',

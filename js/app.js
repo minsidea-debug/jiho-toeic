@@ -64,7 +64,7 @@ function fitQuote() {
   const el = document.querySelector('.quote-line'); if (!el) return;
   el.style.fontSize = '';
   let fs = parseFloat(getComputedStyle(el).fontSize);
-  const min = 11;
+  const min = innerWidth <= 800 ? 999 : 11;  // 폰(800px 이하)은 글자를 줄이지 않고 줄바꿈
   while (el.scrollWidth > el.clientWidth && fs > min) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
   el.classList.toggle('wrap', el.scrollWidth > el.clientWidth);
 }

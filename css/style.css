@@ -59,7 +59,7 @@ main { flex: 1; min-width: 0; padding: 28px 36px 60px; max-width: 1240px; margin
 .grid4 { grid-template-columns: repeat(4, 1fr); }
 .grid2 > .card, .grid3 > .card, .grid4 > .card { margin-bottom: 0; }
 .stat .label { color: var(--muted); font-size: 0.875rem; }
-.stat .big { font-size: 2rem; font-weight: 800; }
+.stat .big { font-size: 1.875rem; font-weight: 800; }
 .stat .big small { font-size: 0.9375rem; font-weight: 500; color: var(--muted); }
 .ok-text { color: var(--ok); font-weight: 700; font-size: 0.875rem; margin-top: 6px; }
 .action, .part { text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: .15s; }

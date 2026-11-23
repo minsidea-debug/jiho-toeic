@@ -29,3 +29,7 @@ CC BY-SA 4.0 조건에 따라, 위 목록을 바탕으로 만든 단어 데이�
 이 출처 표기를 함께 남기고 같은 라이선스로 공유해야 합니다.
 
 원본 목록 파일: `sources/NGSL_1.2_stats.csv`, `sources/TSL_1.2_stats.csv`
+
+## Today's Quote (data/quotes.js)
+- 명언 원문·인물 정보: Quotable 데이터 — https://github.com/quotable-io/data (원문 출처: Wikiquote 등 공개 자료)
+- 영미권 인물의 짧은 명언 1,000개(인물 416명)를 골랐고, 한글 이름·이력은 직접 작성

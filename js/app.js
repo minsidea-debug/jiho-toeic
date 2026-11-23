@@ -46,6 +46,29 @@ function partStat(p) {
   ids.forEach(id => { const a = Store.data.attempts[id]; if (a) { solved++; n += a.n; c += a.c; } });
   return { total: ids.length, solved, acc: n ? Math.round(c / n * 100) : null };
 }
+function userName() { return (Store.data.settings.userName || '').trim() || '학습자'; }
+// Today's Quote: 날짜마다 1,000개 중 하나 (같은 날엔 같은 명언)
+function todaysQuote() {
+  const Qs = window.TOEIC_QUOTES, QA = window.TOEIC_QUOTE_AUTHORS;
+  if (!Qs || !Qs.length) return '';
+  const d = new Date(), day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+  const [text, ai] = Qs[(day * 7) % Qs.length], [en, ko, bio] = QA[ai];
+  return `<section class="card quote-card">
+      <div class="quote-head"><span class="quote-label">💬 Today's Quote</span><span class="muted small">${cheer()}</span></div>
+      <p class="quote-line en">“${esc(text)}” <span class="quote-by">by ${esc(en)}</span></p>
+      <p class="quote-bio small"><b>${esc(ko)}</b>: ${esc(bio)}</p>
+    </section>`;
+}
+// 명언 한 줄 맞추기: 넘치면 글자를 줄여 한 줄에 들어가게
+function fitQuote() {
+  const el = document.querySelector('.quote-line'); if (!el) return;
+  el.style.fontSize = '';
+  let fs = parseFloat(getComputedStyle(el).fontSize);
+  const min = 11;
+  while (el.scrollWidth > el.clientWidth && fs > min) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  el.classList.toggle('wrap', el.scrollWidth > el.clientWidth);
+}
+window.addEventListener('resize', fitQuote);
 function cheer() {
   const list = ['오늘도 한 문제씩, 꾸준함이 점수를 만듭니다!', '틀린 문제가 곧 실력이 됩니다 💪', '10분만 집중해봐요!', '어제의 나보다 한 문제 더!', '목표 점수까지 화이팅! 🔥'];
   return list[new Date().getDate() % list.length];
@@ -78,8 +101,9 @@ Views.home = () => {
   const wrongN = d.wrong.filter(id => Q[id]).length;
   const wd = getWordDay(), wDone = wd.ids.filter(id => id in wd.results).length;
   $view.innerHTML = `
-    <header class="page-head"><h1>안녕하세요, Jiho님 👋</h1><p class="muted">${cheer()}</p>
+    <header class="page-head"><h1>안녕하세요, ${esc(userName())}님 👋</h1>
       <button class="btn ghost small mobile-only" data-act="nav" data-arg="#/settings">⚙️ 설정 (테마·글꼴·백업)</button></header>
+    ${todaysQuote()}
     <section class="grid3">
       <div class="card stat"><div class="label">오늘 푼 문제</div><div class="big">${todayN}<small> / ${goal}</small></div>
         <div class="bar"><i style="width:${pct}%"></i></div>${todayN >= goal ? '<div class="ok-text">🎉 오늘 목표 달성!</div>' : ''}</div>
@@ -94,6 +118,7 @@ Views.home = () => {
       <button class="card action" data-act="nav" data-arg="#/words"><span class="ico">🔤</span><b>오늘의 단어 · ${WORD_LEVELS[Store.data.wordSettings.level]}</b><span>${wDone >= wd.ids.length && wd.ids.length ? '🎉 오늘 완료!' : `${wDone} / ${wd.ids.length}개 학습`}</span></button>
     </section>
     <section class="card soon"><b>🎧 리스닝</b> <span class="muted">2단계에서 추가 예정입니다.</span></section>`;
+  fitQuote();
 };
 
 /* ============================================================
@@ -475,6 +500,11 @@ Views.settings = () => {
   $view.innerHTML = `
     <header class="page-head"><h1>⚙️ 설정</h1></header>
     <section class="card form">
+      <h3>👤 사용자 이름</h3>
+      <div class="form-inline"><input id="userName" type="text" maxlength="20" placeholder="이름을 입력하세요" value="${esc(s.userName || '')}"><button class="btn primary" data-act="saveName">저장</button></div>
+      <p class="small muted">홈 화면 인사말 "안녕하세요, ○○님"에 표시됩니다.</p>
+    </section>
+    <section class="card form">
       <h3>🎨 화면</h3>
       <div class="pref-row"><div class="label">테마</div>
         <div class="seg">${themeOpts.map(([k, t, sub]) =>
@@ -731,6 +761,10 @@ const Actions = {
   flip() { F.flipped = !F.flipped; renderFlash(); },
   fknow() { Store.setKnown(F.deck[F.i].id, true); F.know++; F.i++; F.flipped = false; renderFlash(); },
   fdont() { Store.setKnown(F.deck[F.i].id, false); F.dont++; F.i++; F.flipped = false; renderFlash(); },
+  saveName() {
+    const v = document.getElementById('userName').value.trim().slice(0, 20);
+    Store.setSetting('userName', v); alert(v ? `이름을 '${v}'(으)로 저장했어요.` : '이름을 지웠어요.');
+  },
   saveGoal() {
     const v = Math.max(5, Math.min(300, parseInt(document.getElementById('goal').value, 10) || 30));
     Store.setGoal(v); alert(`하루 목표를 ${v}문제로 저장했어요.`);

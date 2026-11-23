@@ -10,7 +10,7 @@ const Store = (() => {
     daily: {},      // 'YYYY-MM-DD' → { n, c }
     history: [],    // 세션 기록
     // 화면 설정: theme(system|light|dark), font(기본 글꼴 키), fontSize(px), navFolded(사이드바 접힘)
-    settings: { goal: 30, theme: 'system', fontKo: 'malgun', fontEn: 'georgia', fontSize: 16, navFolded: false, sound: true },
+    settings: { goal: 30, theme: 'system', fontKo: 'malgun', fontEn: 'georgia', fontSize: 16, navFolded: false, sound: true, userName: 'Jiho' },
     // --- 단어 외우기 ---
     words: {},      // 단어ID → { n, c, last, at }
     wordWrong: [],  // 틀린 단어ID 목록

@@ -320,3 +320,12 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
   background: linear-gradient(90deg, var(--pri-soft) 0%, transparent 100%);
   box-shadow: 0 4px 12px var(--shadow-pri);
 }
+
+/* Today's Quote */
+.quote-card { border-left: 4px solid var(--pri); }
+.quote-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.quote-label { font-weight: 800; color: var(--pri); }
+.quote-line { font-family: var(--font-en); font-size: 1.125rem; font-weight: 600; white-space: nowrap; overflow: hidden; margin: 0 0 8px; }
+.quote-line.wrap { white-space: normal; }
+.quote-by { font-weight: 400; font-style: italic; color: var(--muted); }
+.quote-bio { color: var(--text-2); margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

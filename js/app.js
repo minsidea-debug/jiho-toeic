@@ -836,7 +836,12 @@ const Actions = {
   rrange(r) { recentRange = r; refreshRecent(); },
   rday(k) {
     recentDay = recentDay === k ? null : k;
-    document.querySelectorAll('#recent [data-act="rday"]').forEach(b => b.classList.toggle('on', b.dataset.arg === recentDay));
+    document.querySelectorAll('#recent [data-act="rday"]').forEach(b => {
+      b.classList.toggle('on', b.dataset.arg === recentDay);
+      // 누른 막대만 잠깐 번쩍 (칸 전체가 아니라 막대 크기만큼)
+      const bar = b.dataset.arg === k && b.querySelector('i');
+      if (bar && bar.animate) bar.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.8)' }, { filter: 'brightness(1)' }], { duration: 350, easing: 'ease-out' });
+    });
     document.getElementById('recent-detail').outerHTML = recentDetail();
   },
   vfilter(f) { vocabFilter = f; Views.vocab(); },

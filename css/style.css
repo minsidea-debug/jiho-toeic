@@ -388,3 +388,6 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .dd-bar.ok i { background: var(--ok); } .dd-bar.no i { background: var(--no); }
 .row-inline { display: flex; align-items: center; gap: 6px; }
 .fold-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+/* 요일·날짜를 눌렀을 때: 칸 전체 대신 막대만큼만 번쩍 (안드로이드 누름 반짝임 끔) */
+.col, .cal-cell { -webkit-tap-highlight-color: transparent; }
+.col:focus, .cal-cell:focus { outline: none; }

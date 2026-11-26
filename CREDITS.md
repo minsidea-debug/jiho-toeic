@@ -33,3 +33,8 @@ CC BY-SA 4.0 조건에 따라, 위 목록을 바탕으로 만든 단어 데이�
 ## Today's Quote (data/quotes.js)
 - 명언 원문·인물 정보: Quotable 데이터 — https://github.com/quotable-io/data (원문 출처: Wikiquote 등 공개 자료)
 - 영미권 인물의 짧은 명언 1,000개(인물 416명)를 골랐고, 한글 이름·이력은 직접 작성
+
+## 발음기호 (data/word_ipa.js)
+- 출처: [open-dict-data/ipa-dict](https://github.com/open-dict-data/ipa-dict) `en_US` (미국식 IPA)
+- 라이선스: MIT License, Copyright (c) 2016 dohliam
+- 앱에 맞게 첫 번째 발음만 골라 쓰고, `ɹ`·`ɫ` 를 `r`·`l` 로 바꿔 표기했습니다.

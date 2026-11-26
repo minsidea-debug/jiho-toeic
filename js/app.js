@@ -371,6 +371,7 @@ Views.vocab = () => {
   const all = Store.data.vocab;
   const learning = all.filter(v => !v.known);
   const list = vocabFilter === 'learning' ? learning : vocabFilter === 'known' ? all.filter(v => v.known) : all;
+  const ko2en = Store.data.settings.vocabDir === 'ko2en';   // 목록 배열: 영→한 / 한→영
   $view.innerHTML = `
     <button class="btn ghost small" data-act="nav" data-arg="#/words">← 단어 외우기</button>
     <header class="page-head"><h1>📒 내 단어장</h1><p class="muted">해설 화면의 단어 버튼을 누르거나 직접 추가하세요.</p></header>
@@ -385,11 +386,15 @@ Views.vocab = () => {
         <button class="${vocabFilter === 'known' ? 'on' : ''}" data-act="vfilter" data-arg="known">외웠음 ${all.length - learning.length}</button>
         <button class="${vocabFilter === 'all' ? 'on' : ''}" data-act="vfilter" data-arg="all">전체 ${all.length}</button>
       </div>
+      <div class="tabs">
+        <button class="${ko2en ? '' : 'on'}" data-act="vdir" data-arg="en2ko">영 → 한</button>
+        <button class="${ko2en ? 'on' : ''}" data-act="vdir" data-arg="ko2en">한 → 영</button>
+      </div>
       <button class="btn primary" data-act="nav" data-arg="#/flash" ${all.length ? '' : 'disabled'}>🃏 플래시카드 시작</button>
     </div>
     ${list.length ? `<div class="vocab-list">${list.map(v => `
       <div class="card vocab-row ${v.known ? 'known' : ''}">
-        <b>${esc(v.w)}</b><span class="grow">${esc(v.m)}</span>
+        ${ko2en ? `<b>${esc(v.m)}</b><span class="grow">${esc(v.w)}</span>` : `<b>${esc(v.w)}</b><span class="grow">${esc(v.m)}</span>`}
         <button class="btn small" data-act="vknown" data-arg="${v.id}">${v.known ? '↩ 다시 외우기' : '✓ 외웠음'}</button>
         <button class="btn ghost small" data-act="vdel" data-arg="${v.id}" title="삭제">🗑</button>
       </div>`).join('')}</div>`
@@ -397,6 +402,8 @@ Views.vocab = () => {
 };
 
 /* ---------- 플래시카드 ---------- */
+// 발음기호(data/word_ipa.js) — 사전에 없는 단어(직접 추가한 단어 등)는 빈칸
+const ipaOf = w => (window.TOEIC_IPA || {})[String(w).toLowerCase().trim()] || '';
 let F = null;
 Views.flash = () => {
   const all = Store.data.vocab;
@@ -414,12 +421,17 @@ function renderFlash() {
     return;
   }
   const v = F.deck[F.i];
+  const ipa = ipaOf(v.w);
   $view.innerHTML = `
     <div class="session-head"><b>🃏 플래시카드</b><span class="muted">${F.i + 1} / ${F.deck.length}</span><button class="btn ghost small" data-act="nav" data-arg="#/vocab">그만하기</button></div>
-    <button class="flashcard ${F.flipped ? 'flipped' : ''}" data-act="flip">
+    <div class="flashcard ${F.flipped ? 'flipped' : ''}" data-act="flip" role="button" tabindex="0">
       <div class="fw">${esc(v.w)}</div>
-      ${F.flipped ? `<div class="fm">${esc(v.m)}</div>` : '<div class="small muted">클릭(또는 Space)해서 뜻 보기</div>'}
-    </button>
+      ${F.flipped
+        ? `<div class="f-ipa">${ipa ? `<span>/${esc(ipa)}/</span>` : ''}<button class="speak sm" data-act="speak" data-arg="${esc(v.w)}" title="발음 듣기">🔊</button></div>
+           <div class="fm">${esc(v.m)}</div>`
+        : `<button class="btn f-listen" data-act="speak" data-arg="${esc(v.w)}">🔊 듣기</button>
+           <div class="small muted">카드를 클릭(또는 Space)해서 뜻 보기</div>`}
+    </div>
     <div class="row center">
       <button class="btn big" data-act="fdont">😅 몰라요 <kbd>←</kbd></button>
       <button class="btn primary big" data-act="fknow">😎 알아요 <kbd>→</kbd></button>
@@ -756,6 +768,7 @@ const Actions = {
     vocabFilter = 'learning'; Views.vocab(); document.getElementById('vw').focus();
   },
   vfilter(f) { vocabFilter = f; Views.vocab(); },
+  vdir(d) { Store.setSetting('vocabDir', d); Views.vocab(); },
   vknown(id) { Store.setKnown(id); Views.vocab(); },
   vdel(id) { if (confirm('이 단어를 삭제할까요?')) { Store.removeVocab(id); Views.vocab(); } },
   flip() { F.flipped = !F.flipped; renderFlash(); },

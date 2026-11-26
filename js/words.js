@@ -38,10 +38,9 @@ function getWordDay() {
 
   if (day.ids.length < want) {
     const inDay = new Set(day.ids);
-    // 1) 아직 한 번도 안 본 새 단어
-    //    (목록 순서 = 자주 쓰이는 단어부터. 하루 안에서는 섞어서 출제)
-    let add = shuffle(bank.filter(w => !Store.data.words[w.id] && !inDay.has(w.id))
-      .slice(0, want - day.ids.length)).map(w => w.id);
+    // 1) 아직 한 번도 안 본 새 단어 — 그 난이도의 안 배운 단어 전체에서 골고루 무작위로
+    let add = shuffle(bank.filter(w => !Store.data.words[w.id] && !inDay.has(w.id)))
+      .slice(0, want - day.ids.length).map(w => w.id);
     // 2) 새 단어가 모자라면 정답률 낮은 단어로 복습
     if (day.ids.length + add.length < want) {
       const acc = w => { const a = Store.data.words[w.id]; return a.c / a.n; };
@@ -90,7 +89,10 @@ function buildChoices(word, dir) {
   const clash = w => w.id === word.id || w.w.toLowerCase() === word.w.toLowerCase() || synWords.has(w.w.toLowerCase())
     || sensesOverlap(w, word) || synonymsOf(w).some(([s]) => s.toLowerCase() === word.w.toLowerCase());
   const pool = (WORDS_BY_LEVEL[word.level] || []).filter(w => !clash(w));
-  const ordered = shuffle(pool.filter(w => w.pos === word.pos)).concat(shuffle(pool.filter(w => w.pos !== word.pos)));
+  // 오답 보기도 아직 안 나온(안 푼) 단어를 먼저 → 이미 본 단어가 자꾸 보이지 않게
+  const fresh = pool.filter(w => !Store.data.words[w.id]), seen = pool.filter(w => Store.data.words[w.id]);
+  const byPos = list => shuffle(list.filter(w => w.pos === word.pos)).concat(shuffle(list.filter(w => w.pos !== word.pos)));
+  const ordered = byPos(fresh).concat(byPos(seen));
   // 보기끼리도 뜻이 겹치지 않게
   const picked = [];
   for (const w of ordered) {
@@ -123,7 +125,7 @@ Views.words = () => {
     const b = WORDS_BY_LEVEL[k], learned = b.filter(w => Store.data.words[w.id]).length;
     const pct = b.length ? Math.round(learned / b.length * 100) : 0;
     return `<button class="level-tab ${k === lv ? 'on' : ''}" data-act="wlevel" data-arg="${k}">
-      <b>${WORD_LEVELS[k]}</b><small>${WORD_LEVEL_DESC[k]}</small>
+      <span class="lv-pct">${pct}%</span><b>${WORD_LEVELS[k]}</b><small>${WORD_LEVEL_DESC[k]}</small>
       <span class="lv-prog"><i style="width:${pct}%"></i></span><small>${learned} / ${b.length}개 학습</small>
     </button>`;
   }).join('');

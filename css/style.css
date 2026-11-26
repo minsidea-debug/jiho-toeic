@@ -330,3 +330,14 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .quote-line.wrap { white-space: normal; }
 .quote-by { font-weight: 400; font-style: italic; color: var(--muted); }
 .quote-bio { color: var(--text-2); margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 플래시카드: 듣기 버튼 · 발음기호 */
+.f-listen { font-size: 1rem; }
+.f-ipa { display: flex; align-items: center; gap: 10px; font-family: 'Segoe UI', 'Lucida Sans Unicode', 'Noto Sans', sans-serif; font-size: 1.125rem; color: var(--muted); }
+
+/* 하루 목표 입력칸 숫자 가운데 */
+#goal { text-align: center; }
+
+/* 단어 난이도 칸 오른쪽 위: 학습 비율(%) */
+.level-tab { position: relative; }
+.level-tab .lv-pct { position: absolute; top: 10px; right: 12px; font-size: 0.8125rem; font-weight: 800; color: var(--pri); }

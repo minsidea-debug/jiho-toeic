@@ -463,13 +463,6 @@ Views.stats = () => {
     .sort((a, b) => a[1] - b[1])
     .map(([t, acc, cnt]) => hbar(t, acc, `${cnt}회`)).join('');
 
-  const week = [];
-  for (let i = 6; i >= 0; i--) {
-    const t = Date.now() - i * 86400000, k = Store.dayKey(t), v = d.daily[k] || { n: 0, c: 0 };
-    week.push({ label: ['일', '월', '화', '수', '목', '금', '토'][new Date(t).getDay()], n: v.n });
-  }
-  const max = Math.max(d.settings.goal, ...week.map(w => w.n));
-
   const hist = d.history.slice(-10).reverse().map(h => {
     const dt = new Date(h.at);
     return `<tr><td>${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}</td><td>${esc(h.title)}</td><td>${h.correct}/${h.total}</td><td>${fmtTime(h.sec)}</td></tr>`;
@@ -484,14 +477,54 @@ Views.stats = () => {
       <div class="card stat"><div class="label">단어</div><div class="big">${d.vocab.length}<small>개</small></div></div>
     </section>
     <section class="grid2">
-      <div class="card"><h3>최근 7일 풀이량</h3>
-        <div class="cols">${week.map(w => `<div class="col"><span class="small">${w.n || ''}</span><i style="height:${w.n / max * 100}%"></i><span class="small muted">${w.label}</span></div>`).join('')}</div>
-        <div class="small muted">하루 목표 ${d.settings.goal}문제</div></div>
+      ${recentCard()}
       <div class="card"><h3>파트별 정답률</h3>${partBars}</div>
     </section>
     <section class="card"><h3>유형별 정답률 <span class="small muted">(낮은 순 = 약점)</span></h3>${typeBars || '<p class="muted">아직 기록이 없어요.</p>'}</section>
     <section class="card"><h3>최근 학습 기록</h3>${hist ? `<table class="tbl"><thead><tr><th>시간</th><th>내용</th><th>점수</th><th>시간</th></tr></thead><tbody>${hist}</tbody></table>` : '<p class="muted">아직 기록이 없어요.</p>'}</section>`;
 };
+/* ---------- 최근 풀이량: 1주일(막대) / 1개월(달력) + 날짜 누르면 정답·오답 ---------- */
+let recentRange = 'week', recentDay = null;
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+function recentCard() {
+  const d = Store.data, goal = d.settings.goal;
+  const day = k => d.daily[k] || { n: 0, c: 0 };
+  let body;
+  if (recentRange === 'week') {
+    const week = [];
+    for (let i = 6; i >= 0; i--) { const t = Date.now() - i * 86400000, k = Store.dayKey(t); week.push({ k, label: DOW[new Date(t).getDay()], n: day(k).n }); }
+    const max = Math.max(goal, ...week.map(w => w.n));
+    body = `<div class="cols">${week.map(w => `<button class="col ${w.k === recentDay ? 'on' : ''}" data-act="rday" data-arg="${w.k}"><span class="small">${w.n || ''}</span><i style="height:${w.n / max * 100}%"></i><span class="small muted">${w.label}</span></button>`).join('')}</div>`;
+  } else {
+    // 이번 달 달력 (요일은 맨 윗줄)
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate(), todayD = now.getDate();
+    const keys = []; for (let i = 1; i <= last; i++) keys.push(Store.dayKey(new Date(y, m, i).getTime()));
+    const max = Math.max(goal, ...keys.map(k => day(k).n));
+    let cells = DOW.map((w, i) => `<div class="cal-dow ${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}">${w}</div>`).join('');
+    for (let i = 0; i < first; i++) cells += '<div></div>';
+    keys.forEach((k, i) => {
+      const v = day(k), future = i + 1 > todayD;
+      cells += future ? `<div class="cal-cell future"><span class="cal-date">${i + 1}</span></div>`
+        : `<button class="cal-cell ${k === recentDay ? 'on' : ''}" data-act="rday" data-arg="${k}"><span class="cal-date">${i + 1}</span>
+            <span class="cal-bar"><i style="height:${v.n / max * 100}%"></i></span><span class="cal-n">${v.n || ''}</span></button>`;
+    });
+    body = `<div class="cal-title small muted">${y}년 ${m + 1}월</div><div class="cal">${cells}</div>`;
+  }
+  let detail = '<div class="small muted">막대를 누르면 그날의 정답·오답을 볼 수 있어요. · 하루 목표 ' + goal + '문제</div>';
+  if (recentDay) {
+    const v = day(recentDay), wrong = v.n - v.c, mx = Math.max(v.n, 1);
+    const [yy, mm, dd] = recentDay.split('-').map(Number);
+    detail = `<div class="day-detail"><div class="small"><b>${mm}월 ${dd}일 (${DOW[new Date(yy, mm - 1, dd).getDay()]})</b> · ${v.n}문제</div>
+      <div class="dd-row"><span>정답</span><div class="dd-bar ok"><i style="width:${v.c / mx * 100}%"></i></div><b>${v.c}</b></div>
+      <div class="dd-row"><span>오답</span><div class="dd-bar no"><i style="width:${wrong / mx * 100}%"></i></div><b>${wrong}</b></div></div>`;
+  }
+  return `<div class="card" id="recent"><div class="recent-head"><h3>최근 풀이량</h3>
+      <div class="tabs small-tabs"><button class="${recentRange === 'week' ? 'on' : ''}" data-act="rrange" data-arg="week">1주일</button><button class="${recentRange === 'month' ? 'on' : ''}" data-act="rrange" data-arg="month">1개월</button></div></div>
+    ${body}${detail}</div>`;
+}
+function refreshRecent() { const el = document.getElementById('recent'); if (el) el.outerHTML = recentCard(); }
+
 function hbar(label, acc, sub) {
   const cls = acc == null ? '' : acc >= 80 ? 'good' : acc >= 60 ? 'mid' : 'low';
   return `<div class="hbar"><div class="hbar-label"><span>${esc(label)}</span><span class="muted small">${acc == null ? '-' : acc + '%'} · ${sub}</span></div>
@@ -767,6 +800,8 @@ const Actions = {
     if (!Store.addVocab(w.value, m.value, '직접 추가')) { alert('이미 단어장에 있는 단어예요.'); return; }
     vocabFilter = 'learning'; Views.vocab(); document.getElementById('vw').focus();
   },
+  rrange(r) { recentRange = r; refreshRecent(); },
+  rday(k) { recentDay = recentDay === k ? null : k; refreshRecent(); },
   vfilter(f) { vocabFilter = f; Views.vocab(); },
   vdir(d) { Store.setSetting('vocabDir', d); Views.vocab(); },
   vknown(id) { Store.setKnown(id); Views.vocab(); },

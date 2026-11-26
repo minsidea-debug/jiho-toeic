@@ -460,10 +460,6 @@ Views.stats = () => {
   });
   typeRows = Object.entries(types).map(([t, v]) => [t, Math.round(v.c / v.n * 100), v.n]);
 
-  const hist = d.history.slice(-10).reverse().map(h => {
-    const dt = new Date(h.at);
-    return `<tr><td>${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}</td><td>${esc(h.title)}</td><td>${h.correct}/${h.total}</td><td>${fmtTime(h.sec)}</td></tr>`;
-  }).join('');
 
   $view.innerHTML = `
     <header class="page-head"><h1>📊 통계</h1></header>
@@ -478,7 +474,7 @@ Views.stats = () => {
       <div class="card"><h3>파트별 정답률</h3>${partBars}</div>
     </section>
     ${typeCard()}
-    <section class="card"><h3>최근 학습 기록</h3>${hist ? `<table class="tbl"><thead><tr><th>시간</th><th>내용</th><th>점수</th><th>시간</th></tr></thead><tbody>${hist}</tbody></table>` : '<p class="muted">아직 기록이 없어요.</p>'}</section>`;
+    ${histCard()}`;
 };
 /* ---------- 최근 풀이량: 1주일(막대) / 1개월(달력) + 날짜 누르면 정답·오답 ---------- */
 let recentRange = 'week', recentDay = null;
@@ -508,6 +504,13 @@ function recentCard() {
     });
     body = `<div class="cal-title small muted">${y}년 ${m + 1}월</div><div class="cal">${cells}</div>`;
   }
+  return `<div class="card" id="recent"><div class="recent-head"><h3>최근 풀이량</h3>
+      <div class="tabs small-tabs"><button class="${recentRange === 'week' ? 'on' : ''}" data-act="rrange" data-arg="week">1주일</button><button class="${recentRange === 'month' ? 'on' : ''}" data-act="rrange" data-arg="month">1개월</button></div></div>
+    ${body}${recentDetail()}</div>`;
+}
+// 날짜를 눌렀을 때 아래 정답·오답 부분 (막대는 다시 그리지 않음)
+function recentDetail() {
+  const d = Store.data, goal = d.settings.goal, day = k => d.daily[k] || { n: 0, c: 0 };
   let detail = '<div class="small muted">막대를 누르면 그날의 정답·오답을 볼 수 있어요. · 하루 목표 ' + goal + '문제</div>';
   if (recentDay) {
     const v = day(recentDay), wrong = v.n - v.c, mx = Math.max(v.n, 1);
@@ -516,9 +519,7 @@ function recentCard() {
       <div class="dd-row"><span>정답</span><div class="dd-bar ok"><i style="width:${v.c / mx * 100}%"></i></div><b>${v.c}</b></div>
       <div class="dd-row"><span>오답</span><div class="dd-bar no"><i style="width:${wrong / mx * 100}%"></i></div><b>${wrong}</b></div></div>`;
   }
-  return `<div class="card" id="recent"><div class="recent-head"><h3>최근 풀이량</h3>
-      <div class="tabs small-tabs"><button class="${recentRange === 'week' ? 'on' : ''}" data-act="rrange" data-arg="week">1주일</button><button class="${recentRange === 'month' ? 'on' : ''}" data-act="rrange" data-arg="month">1개월</button></div></div>
-    ${body}${detail}</div>`;
+  return `<div id="recent-detail">${detail}</div>`;
 }
 /* ---------- 유형별 정답률: Top 5 + 정렬(▲ 높은 순 / ▼ 낮은 순) + 펼치기/접기 ---------- */
 let typeRows = [], typeSort = 'down', typeOpen = false;
@@ -531,6 +532,24 @@ function typeCard() {
     <div class="small muted" style="margin:4px 0 10px">${typeSort === 'up' ? '정답률 높은 순' : '정답률 낮은 순 = 약점'} · ${typeOpen ? `전체 ${rows.length}개` : 'Top 5'}</div>
     ${shown.length ? shown.map(([t, acc, cnt]) => hbar(t, acc, `${cnt}회`)).join('') : '<p class="muted">아직 기록이 없어요.</p>'}
     ${rows.length > 5 ? `<div class="fold-row"><button class="btn ghost small" data-act="topen">${typeOpen ? '접기 ▴' : `펼치기 ▾ (${rows.length - 5}개 더)`}</button></div>` : ''}
+  </section>`;
+}
+/* ---------- 최근 학습 기록: 최근 5일 / 펼치면 1개월 ---------- */
+let histOpen = false;
+function histCard() {
+  const days = histOpen ? 30 : 5, now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)).getTime();
+  const all = Store.data.history.filter(h => h.at >= from).reverse();
+  const monthFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
+  const more = !histOpen && Store.data.history.some(h => h.at >= monthFrom && h.at < from);
+  const rows = all.map(h => {
+    const dt = new Date(h.at);
+    return `<tr><td>${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}</td><td>${esc(h.title)}</td><td>${h.correct}/${h.total}</td><td>${fmtTime(h.sec)}</td></tr>`;
+  }).join('');
+  return `<section class="card" id="histcard"><h3>최근 학습 기록</h3>
+    <div class="small muted" style="margin:-4px 0 10px">${histOpen ? '최근 1개월' : '최근 5일'}${all.length ? ` · ${all.length}회` : ''}</div>
+    ${rows ? `<table class="tbl"><thead><tr><th>시간</th><th>내용</th><th>점수</th><th>시간</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${histOpen ? '최근 1개월' : '최근 5일'} 기록이 없어요.</p>`}
+    ${histOpen || more ? `<div class="fold-row"><button class="btn ghost small" data-act="hopen">${histOpen ? '접기 ▴' : '펼치기 ▾ (1개월)'}</button></div>` : ''}
   </section>`;
 }
 function refreshTypes() { const el = document.getElementById('typecard'); if (el) el.outerHTML = typeCard(); }
@@ -811,10 +830,15 @@ const Actions = {
     if (!Store.addVocab(w.value, m.value, '직접 추가')) { alert('이미 단어장에 있는 단어예요.'); return; }
     vocabFilter = 'learning'; Views.vocab(); document.getElementById('vw').focus();
   },
+  hopen() { histOpen = !histOpen; const el = document.getElementById('histcard'); el.outerHTML = histCard(); if (!histOpen) document.getElementById('histcard').scrollIntoView({ block: 'nearest' }); },
   tsort(k) { typeSort = k; refreshTypes(); },
   topen() { typeOpen = !typeOpen; refreshTypes(); if (!typeOpen) document.getElementById('typecard').scrollIntoView({ block: 'nearest' }); },
   rrange(r) { recentRange = r; refreshRecent(); },
-  rday(k) { recentDay = recentDay === k ? null : k; refreshRecent(); },
+  rday(k) {
+    recentDay = recentDay === k ? null : k;
+    document.querySelectorAll('#recent [data-act="rday"]').forEach(b => b.classList.toggle('on', b.dataset.arg === recentDay));
+    document.getElementById('recent-detail').outerHTML = recentDetail();
+  },
   vfilter(f) { vocabFilter = f; Views.vocab(); },
   vdir(d) { Store.setSetting('vocabDir', d); Views.vocab(); },
   vknown(id) { Store.setKnown(id); Views.vocab(); },

@@ -58,7 +58,7 @@ main { flex: 1; min-width: 0; padding: 28px 36px 60px; max-width: 1240px; margin
 .grid3 { grid-template-columns: repeat(3, 1fr); }
 .grid4 { grid-template-columns: repeat(4, 1fr); }
 .grid2 > .card, .grid3 > .card, .grid4 > .card { margin-bottom: 0; }
-.grid3 > .card.stat { text-align: center; }
+.grid3 > .card.stat, .grid4 > .card.stat { text-align: center; }
 .stat .label { color: var(--muted); font-size: 0.875rem; }
 .stat .big { font-size: 1.05rem; font-weight: 800; }
 .stat .big small { font-size: 0.9375rem; font-weight: 500; color: var(--muted); }

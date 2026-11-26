@@ -534,22 +534,19 @@ function typeCard() {
     ${rows.length > 5 ? `<div class="fold-row"><button class="btn ghost small" data-act="topen">${typeOpen ? '접기 ▴' : `펼치기 ▾ (${rows.length - 5}개 더)`}</button></div>` : ''}
   </section>`;
 }
-/* ---------- 최근 학습 기록: 최근 5일 / 펼치면 1개월 ---------- */
+/* ---------- 최근 학습 기록: 최근 5회 + 펼치기(나머지 전체) / 접기 ---------- */
 let histOpen = false;
 function histCard() {
-  const days = histOpen ? 30 : 5, now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)).getTime();
-  const all = Store.data.history.filter(h => h.at >= from).reverse();
-  const monthFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
-  const more = !histOpen && Store.data.history.some(h => h.at >= monthFrom && h.at < from);
-  const rows = all.map(h => {
+  const all = Store.data.history.slice().reverse();
+  const shown = histOpen ? all : all.slice(0, 5);
+  const rows = shown.map(h => {
     const dt = new Date(h.at);
     return `<tr><td>${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}</td><td>${esc(h.title)}</td><td>${h.correct}/${h.total}</td><td>${fmtTime(h.sec)}</td></tr>`;
   }).join('');
   return `<section class="card" id="histcard"><h3>최근 학습 기록</h3>
-    <div class="small muted" style="margin:-4px 0 10px">${histOpen ? '최근 1개월' : '최근 5일'}${all.length ? ` · ${all.length}회` : ''}</div>
-    ${rows ? `<table class="tbl"><thead><tr><th>시간</th><th>내용</th><th>점수</th><th>시간</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${histOpen ? '최근 1개월' : '최근 5일'} 기록이 없어요.</p>`}
-    ${histOpen || more ? `<div class="fold-row"><button class="btn ghost small" data-act="hopen">${histOpen ? '접기 ▴' : '펼치기 ▾ (1개월)'}</button></div>` : ''}
+    <div class="small muted" style="margin:-4px 0 10px">${histOpen ? `전체 ${all.length}회` : '최근 5회'}</div>
+    ${rows ? `<table class="tbl"><thead><tr><th>시간</th><th>내용</th><th>점수</th><th>시간</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">아직 기록이 없어요.</p>'}
+    ${all.length > 5 ? `<div class="fold-row"><button class="btn ghost small" data-act="hopen">${histOpen ? '접기 ▴' : `펼치기 ▾ (${all.length - 5}개 더)`}</button></div>` : ''}
   </section>`;
 }
 function refreshTypes() { const el = document.getElementById('typecard'); if (el) el.outerHTML = typeCard(); }

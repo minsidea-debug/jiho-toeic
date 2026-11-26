@@ -104,14 +104,14 @@ Views.home = () => {
     <header class="page-head"><h1>안녕하세요, ${esc(userName())}님 👋</h1>
       <button class="btn ghost small mobile-only" data-act="nav" data-arg="#/settings">⚙️ 설정 (테마·글꼴·백업)</button></header>
     ${todaysQuote()}
-    <section class="grid3">
+    <section class="grid3 home-stats">
       <div class="card stat"><div class="label">오늘 푼 문제</div><div class="big">${todayN}<small> / ${goal}</small></div>
         <div class="bar"><i style="width:${pct}%"></i></div>${todayN >= goal ? '<div class="ok-text">🎉 오늘 목표 달성!</div>' : ''}</div>
       <div class="card stat"><div class="label">연속 학습</div><div class="big">${streak()}<small>일</small></div></div>
       <div class="card stat"><div class="label">전체 정답률</div><div class="big">${overallAcc()}<small>%</small></div></div>
     </section>
     <h2>바로 시작</h2>
-    <section class="grid2">
+    <section class="grid2 home-quick">
       <button class="card action" data-act="quick" data-arg="p5"><span class="ico">✏️</span><b>Part 5 · 10문제</b><span>가볍게 문법·어휘 연습</span></button>
       <button class="card action" data-act="quick" data-arg="mock"><span class="ico">⏱️</span><b>미니 모의고사</b><span>Part 5·6·7 섞어서 실전처럼</span></button>
       <button class="card action" data-act="quick" data-arg="wrong" ${wrongN ? '' : 'disabled'}><span class="ico">❌</span><b>오답 복습</b><span>${wrongN ? wrongN + '문제 남음' : '오답이 없어요'}</span></button>
@@ -543,11 +543,11 @@ Views.settings = () => {
         <div>미리보기: 오늘도 한 문제씩, 꾸준함이 점수를 만듭니다.</div>
         <div class="en">The quarterly report must be approved by the manager.</div>
       </div>
-      <p class="small muted">사이드바는 왼쪽 위 <b>접기 버튼</b>이나 <kbd>Ctrl</kbd>+<kbd>B</kbd>로 접고 펼 수 있어요. (PC 화면)</p>
+      <p class="small muted">사이드바는 왼쪽 위 <b>접기 버튼</b>이나 <kbd>Ctrl</kbd>+<kbd>B</kbd>로 접고 펼 수 있어요. (PC)</p>
     </section>
     <section class="card form">
       <h3>효과음</h3>
-      <div class="seg">${[[true, '켜기'], [false, '끄기']].map(([v, t]) => `<label><input type="radio" name="sound" value="${v}" ${(s.sound !== false) === v ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
+      <div class="seg center">${[[true, '켜기'], [false, '끄기']].map(([v, t]) => `<label><input type="radio" name="sound" value="${v}" ${(s.sound !== false) === v ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
       <p class="small muted">정답: 도-미-솔-도 · 오답: 내려가는 단조 · 메뉴 이동: 짧은 삑</p>
     </section>
     <section class="card form">

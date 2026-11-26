@@ -341,3 +341,14 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 /* 단어 난이도 칸 오른쪽 위: 학습 비율(%) */
 .level-tab { position: relative; }
 .level-tab .lv-pct { position: absolute; top: 10px; right: 12px; font-size: 0.8125rem; font-weight: 800; color: var(--pri); }
+
+/* 홈 > 바로 시작: 아이콘·제목은 가운데, 한 줄 설명은 왼쪽 그대로 */
+.home-quick .action .ico, .home-quick .action b { align-self: center; text-align: center; }
+/* 효과음 켜기/끄기 가운데 */
+.seg.center { justify-content: center; }
+/* 홈 숫자 3칸: 폰에서도 한 줄에 같은 크기로 */
+@media (max-width: 800px) {
+  .grid3.home-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .home-stats .card.stat { padding: 12px 6px; min-width: 0; }
+  .home-stats .stat .label { font-size: 0.75rem; }
+}

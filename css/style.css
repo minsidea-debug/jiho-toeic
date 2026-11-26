@@ -386,3 +386,5 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .dd-bar { flex: 1; height: 12px; background: var(--bg); overflow: hidden; }
 .dd-bar i { display: block; height: 100%; }
 .dd-bar.ok i { background: var(--ok); } .dd-bar.no i { background: var(--no); }
+.row-inline { display: flex; align-items: center; gap: 6px; }
+.fold-row { display: flex; justify-content: flex-end; margin-top: 4px; }

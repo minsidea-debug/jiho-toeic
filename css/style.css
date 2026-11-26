@@ -391,3 +391,5 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 /* 요일·날짜를 눌렀을 때: 칸 전체 대신 막대만큼만 번쩍 (안드로이드 누름 반짝임 끔) */
 .col, .cal-cell { -webkit-tap-highlight-color: transparent; }
 .col:focus, .cal-cell:focus { outline: none; }
+/* 단어 > 오늘의 단어 시작/이어서 하기 버튼 가운데 */
+.btn[data-act="wstart"] { display: flex; width: fit-content; margin-left: auto; margin-right: auto; }

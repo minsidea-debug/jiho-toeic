@@ -403,3 +403,5 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .script-a.ans { color: var(--ok); }
 .script .ko { color: var(--muted); font-family: var(--font-ui); }
 .soon-part { opacity: .55; display: flex; flex-direction: column; gap: 2px; }
+/* 홈 > 리스닝 바로 시작: 위 카드들처럼 줄 전체를 차지 */
+.full-row { grid-column: 1 / -1; }

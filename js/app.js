@@ -124,7 +124,7 @@ Views.home = () => {
       <button class="card action" data-act="quick" data-arg="wrong" ${wrongN ? '' : 'disabled'}><span class="ico">❌</span><b>오답 복습</b><span>${wrongN ? wrongN + '문제 남음' : '오답이 없어요'}</span></button>
       <button class="card action" data-act="nav" data-arg="#/words"><span class="ico">🔤</span><b>오늘의 단어 · ${WORD_LEVELS[Store.data.wordSettings.level]}</b><span>${wDone >= wd.ids.length && wd.ids.length ? '🎉 오늘 완료!' : `${wDone} / ${wd.ids.length}개 학습`}</span></button>
     </section>
-    <section class="home-quick"><button class="card action" data-act="quick" data-arg="p2"><span class="ico">🎧</span><b>리스닝 Part 2 · 10문제</b><span>질문을 듣고 알맞은 응답 고르기</span></button></section>`;
+    <section class="grid2 home-quick"><button class="card action full-row" data-act="quick" data-arg="p2"><span class="ico">🎧</span><b>리스닝 Part 2 · 10문제</b><span>질문을 듣고 알맞은 응답 고르기</span></button></section>`;
   fitQuote();
 };
 

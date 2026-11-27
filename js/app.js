@@ -303,6 +303,16 @@ function renderSession() {
   if (cur) cur.scrollIntoView({ block: 'nearest' });
 }
 
+/* ---------- 설정: 리스닝 목소리 고르기 (기기에 있는 영어 목소리, 좋은 것부터) ---------- */
+function fillVoiceSelect() {
+  const sel = document.getElementById('listenVoice'); if (!sel || !window.Listen) return;
+  const cur = Store.data.settings.listenVoice || '';
+  const list = Listen.voices();
+  sel.innerHTML = `<option value="">자동 (가장 좋은 목소리)</option>` + list.map(v =>
+    `<option value="${esc(v.voiceURI)}" ${v.voiceURI === cur ? 'selected' : ''}>${esc(v.name)} · ${esc(v.lang)}</option>`).join('');
+}
+if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', fillVoiceSelect);
+
 /* ---------- 리스닝: 재생 버튼 · 속도 · (정답 후) 대본 ---------- */
 const RATES = [[0.8, '0.8배'], [1, '1.0배'], [1.2, '1.2배']];
 function listenBox(q, reveal) {
@@ -699,6 +709,11 @@ Views.settings = () => {
       <p class="small muted">정답: 도-미-솔-도 · 오답: 내려가는 단조 · 메뉴 이동: 짧은 삑</p>
     </section>
     <section class="card form">
+      <h3>🎧 리스닝 목소리</h3>
+      <div class="form-inline"><select id="listenVoice" class="font-select"></select><button class="btn" data-act="voiceSample">▶ 미리 듣기</button></div>
+      <p class="small muted">AI 음성 파일이 있는 문제는 파일로 재생하고, 없을 때만 이 기기 목소리를 씁니다. 목소리가 기계적이면 폰 설정 → 일반 → 텍스트 음성 변환에서 엔진을 <b>Google 음성 서비스</b>로 바꾸고 영어 음성을 내려받아 보세요.</p>
+    </section>
+    <section class="card form">
       <h3>하루 목표</h3>
       <div class="form-inline"><input id="goal" type="number" min="5" max="300" value="${d.settings.goal}"><span>문제</span><button class="btn primary" data-act="saveGoal">저장</button></div>
     </section>
@@ -726,6 +741,8 @@ Views.settings = () => {
     r.readAsText(f);
   });
   document.querySelectorAll('input[name=theme]').forEach(r => r.addEventListener('change', () => { Store.setSetting('theme', r.value); applyPrefs(); }));
+  fillVoiceSelect();
+  document.getElementById('listenVoice').addEventListener('change', e => { Store.setSetting('listenVoice', e.target.value); Listen.sample(e.target.value); });
   document.querySelectorAll('input[name=sound]').forEach(r => r.addEventListener('change', () => { Store.setSetting('sound', r.value === 'true'); if (r.value === 'true') Sound.correct(); }));
   const koSel = document.getElementById('fontKo'), enSel = document.getElementById('fontEn');
   const syncFontPreview = () => {
@@ -860,8 +877,9 @@ const Actions = {
     startSession({ title: `${PART_INFO[p].name} · ${PART_INFO[p].title}`, part: p, qids: pickQids(p, cnt), mode });
   },
   lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else playFor(q); },
+  voiceSample() { Listen.sample(document.getElementById('listenVoice').value); },
   lplayq(id) { playFor(Q[id]); },
-  lrate(v) { Store.setSetting('listenRate', +v); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
+  lrate(v) { Store.setSetting('listenRate', +v); Listen.applyRate(); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
   pick(i) {
     i = +i;
     const id = curId(), q = Q[id];

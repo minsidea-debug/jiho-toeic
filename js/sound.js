@@ -15,7 +15,7 @@
     return ctx;
   }
   function enabled() {
-    return !(window.Store && Store.data && Store.data.settings && Store.data.settings.sound === false);
+    return !(typeof Store !== 'undefined' && Store.data && Store.data.settings && Store.data.settings.sound === false);
   }
   // 음 하나: 주파수, 시작 시각(초), 길이(초), 파형, 음량
   function tone(c, freq, start, dur, type, vol) {

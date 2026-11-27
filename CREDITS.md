@@ -59,3 +59,8 @@ CC BY-SA 4.0 조건에 따라, 위 목록을 바탕으로 만든 단어 데이�
 | p1-12.jpg | https://stocksnap.io/photo/woman-shop-E1KVAKFMUK | Burst |
 | p1-13.jpg | https://stocksnap.io/photo/man-entering-7GXMY2JMR4 | Bruce Mars |
 | p1-14.jpg | https://stocksnap.io/photo/art-gallery-7B52AC0C5F | Ryan McGuire |
+
+## 리스닝 AI 음성 (audio/*.mp3)
+- [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (Apache License 2.0) 으로 직접 창작한 대본을 읽어 만든 음성입니다.
+- 실행 도구: [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx), MP3 변환: lameenc
+- 목소리: af_heart · af_bella · am_michael · am_fenrir (미국식), bf_emma · bf_isabella · bm_george · bm_fable (영국식)

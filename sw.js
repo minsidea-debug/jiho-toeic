@@ -1,9 +1,9 @@
 /* 오프라인 실행용 서비스워커 (인터넷 주소로 열었을 때만 동작)
    파일을 수정하면 VERSION 숫자를 올려주세요. */
-const VERSION = 'jiho-toeic-202611281200'; // VERSION:AUTO
+const VERSION = 'jiho-toeic-202611281430'; // VERSION:AUTO
 const FILES = [
   './', './index.html', './css/style.css', './data/quotes.js', './js/store.js', './js/sound.js', './js/listen.js', './js/app.js', './js/words.js',
-  './data/lc_util.js', './data/part1.js', './data/part1_02.js', './data/part1_03.js', './data/part1_04.js', './data/part1_05.js', './data/part2.js', './data/part2_02.js', './data/part2_03.js', './data/part2_04.js', './data/part2_05.js', './data/part2_06.js', './data/part2_07.js', './data/part2_08.js', './data/part2_09.js', './data/part2_10.js', './data/part3.js', './data/part3_02.js', './data/part3_03.js', './data/part3_04.js', './data/part3_05.js', './data/part3_06.js', './data/part3_07.js', './data/part3_08.js', './data/part3_09.js', './data/part3_10.js', './data/part4.js', './data/part4_02.js', './data/part4_03.js', './data/part4_04.js', './data/part4_05.js', './data/part4_06.js', './data/part4_07.js', './data/part4_08.js', './data/part4_09.js', './data/part4_10.js', './data/listen_directions.js', './data/audio_index.js', './data/part5.js', './data/part6.js', './data/part7.js',
+  './data/lc_util.js', './data/part1.js', './data/part1_02.js', './data/part1_03.js', './data/part1_04.js', './data/part1_05.js', './data/part2.js', './data/part2_02.js', './data/part2_03.js', './data/part2_04.js', './data/part2_05.js', './data/part2_06.js', './data/part2_07.js', './data/part2_08.js', './data/part2_09.js', './data/part2_10.js', './data/part3.js', './data/part3_02.js', './data/part3_03.js', './data/part3_04.js', './data/part3_05.js', './data/part3_06.js', './data/part3_07.js', './data/part3_08.js', './data/part3_09.js', './data/part3_10.js', './data/part4.js', './data/part4_02.js', './data/part4_03.js', './data/part4_04.js', './data/part4_05.js', './data/part4_06.js', './data/part4_07.js', './data/part4_08.js', './data/part4_09.js', './data/part4_10.js', './data/listen_directions.js', './data/audio_index.js', './data/lc_packs.js', './data/part5.js', './data/part6.js', './data/part7.js',
   './data/words_elem.js', './data/words_middle.js', './data/words_high.js', './data/words_univ.js', './data/word_synonyms.js', './data/word_ipa.js',
   './data/words_loader.js',
   // WORDS:START
@@ -116,11 +116,22 @@ self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  // 'jiho-media' (사용자가 내려받은 리스닝 음성·사진 묶음) 은 앱을 업데이트해도 지우지 않음
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== MEDIA).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-// 네트워크 우선, 실패하면(오프라인) 저장해 둔 파일 사용
+const MEDIA = 'jiho-media';
+// 음성·사진: 저장해 둔 게 있으면 그걸 먼저 (데이터 절약), 없으면 받아서 저장
+// 나머지(앱 파일): 네트워크 우선, 실패하면(오프라인) 저장해 둔 파일 사용
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (/\/(audio|images)\//.test(url.pathname)) {
+    e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(res => {
+      if (res.status === 200) { const copy = res.clone(); caches.open(MEDIA).then(c => c.put(e.request, copy)); }
+      return res;
+    })));
+    return;
+  }
   e.respondWith(
     fetch(e.request, { cache: 'no-cache' })  // 항상 서버에 새 버전이 있는지 확인
       .then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); return res; })

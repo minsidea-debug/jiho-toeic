@@ -25,6 +25,22 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 const isListenPart = p => !!(PART_INFO[p] && PART_INFO[p].listen);
 const LISTEN_PARTS = [1, 2, 3, 4];
 // 문제에 맞는 소리 재생: Part 2 = 질문+응답, Part 3·4 = 대화·담화 세트
+/* ---------- 리스닝 문제 묶음 (기본 · 추가 1~3) — data/lc_packs.js ----------
+   기본은 바로 사용, 추가 묶음은 내려받은 뒤 사용. 내려받은 음성·사진은 'jiho-media' 캐시에 보관 (sw.js)
+   PC 에서 파일로 열 때(file://)는 내려받기가 필요 없어서 모든 묶음을 바로 사용 */
+const LC_PACKS = window.TOEIC_LC_PACKS || [];
+const MEDIA_CACHE = 'jiho-media';
+const canDownload = 'caches' in window && location.protocol.startsWith('http');
+function packOf(set) {
+  const per = (window.TOEIC_LC_PACK_PER || {})[set.part];
+  if (!per) return 0;
+  const n = +String(set.part <= 2 ? set.questions[0].id : set.id).match(/(\d+)$/)[1];
+  return Math.min(3, Math.floor((n - 1) / per));
+}
+const lcGot = () => Store.data.settings.lcGot || {};
+const packReady = p => p === 0 || !canDownload || !!lcGot()[p];
+const curPack = () => { const p = Store.data.settings.lcPack || 0; return packReady(p) ? p : 0; };
+const mb = b => (b / 1048576).toFixed(1) + 'MB';
 const playFor = q => (q.part === 1 ? Listen.part1(q) : q.part === 2 ? Listen.part2(q) : Listen.talk(SETS[q.setId]));
 const LISTEN_SOON = {};
 
@@ -180,13 +196,14 @@ Views.setup = arg => {
         </div>
       </div>
       <p class="small muted">안 푼 문제가 먼저 나오고, 다 풀었으면 섞어서 다시 나옵니다.</p>
+      ${info.listen && LC_PACKS.length ? `<p class="small muted">📦 문제 묶음: <b>${LC_PACKS[curPack()].name}</b> (리스닝 메뉴에서 바꿀 수 있어요)</p>` : ''}
       ${info.listen ? '<p class="small muted">🔊 소리를 켜 주세요. 기기에 있는 영어 목소리로 읽어 줍니다. (연습 모드: 정답 확인 후 대본·해석 공개)</p>' : ''}
       <button class="btn primary big" data-act="start" data-arg="${p}">시작하기 →</button>
     </section>`;
 };
 
 function pickQids(part, count) {
-  const sets = Object.values(SETS).filter(s => s.part === part);
+  const sets = Object.values(SETS).filter(s => s.part === part && (!isListenPart(part) || packOf(s) === curPack()));
   const seen = s => s.questions.some(q => Store.data.attempts[q.id]);
   const ordered = [...shuffle(sets.filter(s => !seen(s))), ...shuffle(sets.filter(seen))];
   const chosen = count === 'all' ? ordered : ordered.slice(0, +count);
@@ -681,7 +698,7 @@ Views.listening = () => {
       return `<div class="card part soon-part"><div class="part-top"><span class="ico">${ico}</span><span class="badge">Part ${p}</span></div>
         <b>${title}</b><span class="muted">${desc}</span><span class="small muted">🛠 준비 중</span></div>`;
     }
-    const info = PART_INFO[p], st = partStat(p);
+    const info = PART_INFO[p], st = partStatPack(p, curPack());
     const prog = st.total ? Math.round(st.solved / st.total * 100) : 0;
     return `<button class="card part" data-act="setup" data-arg="${p}">
       <div class="part-top"><span class="ico">${info.icon}</span><span class="badge">${info.name}</span></div>
@@ -691,9 +708,116 @@ Views.listening = () => {
     </button>`;
   }).join('');
   $view.innerHTML = `
-    <header class="page-head"><h1>🎧 리스닝</h1><p class="muted">기기의 영어 목소리(미국·영국·호주·캐나다)로 들려줍니다. 소리를 켜 주세요.</p></header>
+    <header class="page-head"><h1>🎧 리스닝</h1><p class="muted">AI 음성(미국·영국 발음)으로 들려줍니다. 소리를 켜 주세요.</p></header>
+    ${packCard()}
     <section class="grid2">${cards}</section>`;
 };
+function partStatPack(p, pack) {
+  const sets = Object.values(SETS).filter(s => s.part === p && packOf(s) === pack);
+  let solved = 0, n = 0, c = 0, total = 0;
+  sets.forEach(s => s.questions.forEach(q => { total++; const a = Store.data.attempts[q.id]; if (a) { solved++; n += a.n; c += a.c; } }));
+  return { total, solved, acc: n ? Math.round(c / n * 100) : null };
+}
+function packCard() {
+  if (!LC_PACKS.length) return '';
+  const cur = curPack();
+  const tabs = LC_PACKS.map((pk, i) => {
+    const ready = packReady(i), total = Object.values(pk.counts).reduce((a, b) => a + b, 0);
+    const state = !canDownload ? `${total}문제` : i === 0 ? (lcGot()[0] ? '✓ 저장됨' : '바로 사용') : ready ? '✓ 받음' : `⬇ ${mb(pk.bytes)}`;
+    return `<button class="pack-tab ${i === cur ? 'on' : ''} ${ready ? '' : 'locked'}" data-act="lcpack" data-arg="${i}">
+      <b>${i === 0 ? '문제 ' : ''}${pk.name}</b><small>${state}</small></button>`;
+  }).join('');
+  const pk = LC_PACKS[cur];
+  const note = !canDownload ? 'PC 에서는 모든 묶음을 바로 쓸 수 있어요.'
+    : cur === 0 && !lcGot()[0] ? `기본 묶음은 인터넷으로 바로 들을 수 있어요. <button class="btn ghost small" data-act="lcget" data-arg="0">⬇ 폰에 저장 (${mb(pk.bytes)})</button> 하면 인터넷 없이도 들을 수 있어요.`
+    : `지금 <b>${pk.name}</b> 묶음으로 공부 중 · Part 1 ${pk.counts[1]} · Part 2 ${pk.counts[2]} · Part 3 ${pk.counts[3]} · Part 4 ${pk.counts[4]}문제`;
+  return `<section class="card pack-card">
+    <div class="label-row"><b>📦 문제 묶음</b><span class="muted small">추가 묶음은 내려받은 뒤 풀 수 있어요</span></div>
+    <div class="pack-tabs">${tabs}</div>
+    <p class="small muted pack-note">${note}</p>
+  </section>`;
+}
+
+/* ---------- 팝업 (확인 창) ---------- */
+function modal({ title, html, buttons }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-wrap';
+    wrap.innerHTML = `<div class="modal card" role="dialog" aria-modal="true"><h3>${title}</h3><div class="modal-body">${html}</div>
+      <div class="modal-btns">${buttons.map((b, i) => `<button class="btn ${b.primary ? 'primary' : ''}" data-i="${i}">${b.label}</button>`).join('')}</div></div>`;
+    wrap.addEventListener('click', e => {
+      const b = e.target.closest('[data-i]');
+      if (b) { wrap.remove(); resolve(buttons[+b.dataset.i].value); }
+    });
+    document.body.appendChild(wrap);
+    wrap.querySelector('.btn.primary, .btn').focus();
+  });
+}
+// 연결 종류: 'wifi' / 'cellular'(LTE·5G) / '' (알 수 없음 — PC 등)
+const netType = () => (navigator.connection && navigator.connection.type) || '';
+
+/* ---------- 묶음 내려받기 ---------- */
+let lcDownloading = false;
+async function downloadPack(i) {
+  const pk = LC_PACKS[i];
+  if (!pk || lcDownloading) return;
+  const total = Object.values(pk.counts).reduce((a, b) => a + b, 0);
+  const ok = await modal({
+    title: `📦 ${i === 0 ? '문제 ' : ''}${pk.name} 묶음 내려받기`,
+    html: `<p>리스닝 ${total}문제의 음성·사진을 폰에 저장합니다.</p>
+      <p class="modal-size">용량: <b>${mb(pk.bytes)}</b> <span class="muted small">(파일 ${pk.files.length}개)</span></p>
+      <p class="modal-warn">📶 <b>Wi-Fi 연결을 권장합니다.</b></p>`,
+    buttons: [{ label: '취소', value: false }, { label: '내려받기', primary: true, value: true }],
+  });
+  if (!ok) return;
+  if (netType() === 'cellular') {
+    const again = await modal({
+      title: '📱 모바일 데이터로 연결되어 있어요',
+      html: `<p>지금 Wi-Fi가 아닌 <b>LTE/5G 모바일 데이터</b>로 연결되어 있어요.<br>${mb(pk.bytes)}를 받으면 데이터 요금이 나올 수 있습니다.</p><p><b>그래도 받으시겠습니까?</b></p>`,
+      buttons: [{ label: '취소', value: false }, { label: '그래도 받기', primary: true, value: true }],
+    });
+    if (!again) return;
+  }
+  lcDownloading = true;
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-wrap';
+  wrap.innerHTML = `<div class="modal card"><h3>⬇ ${pk.name} 묶음 받는 중…</h3>
+    <div class="bar dl-bar"><i style="width:0%"></i></div><p class="small muted dl-text">준비 중</p>
+    <div class="modal-btns"><button class="btn" data-stop>중지</button></div></div>`;
+  document.body.appendChild(wrap);
+  let stop = false, done = 0, bytes = 0, failed = 0;
+  wrap.querySelector('[data-stop]').onclick = () => { stop = true; };
+  const cache = await caches.open(MEDIA_CACHE);
+  const queue = pk.files.slice();
+  const work = async () => {
+    while (queue.length && !stop) {
+      const f = queue.shift();
+      try {
+        if (!(await cache.match(f))) {
+          const res = await fetch(f, { cache: 'no-cache' });
+          if (!res.ok) throw new Error(res.status);
+          await cache.put(f, res);
+        }
+      } catch (e) { failed++; }
+      done++;
+      bytes = pk.bytes * done / pk.files.length;
+      wrap.querySelector('.dl-bar i').style.width = (done / pk.files.length * 100) + '%';
+      wrap.querySelector('.dl-text').textContent = `${done} / ${pk.files.length}개 · 약 ${mb(bytes)} / ${mb(pk.bytes)}`;
+    }
+  };
+  await Promise.all([work(), work(), work(), work()]);   // 4개씩 동시에
+  wrap.remove();
+  lcDownloading = false;
+  if (stop) { await modal({ title: '중지했어요', html: '<p>받은 파일은 남아 있어요. 다시 누르면 이어서 받습니다.</p>', buttons: [{ label: '확인', primary: true }] }); }
+  else if (failed) { await modal({ title: '일부 파일을 받지 못했어요', html: `<p>${failed}개 파일을 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요. (받은 파일은 남아 있어요)</p>`, buttons: [{ label: '확인', primary: true }] }); }
+  else {
+    Store.setSetting('lcGot', Object.assign({}, lcGot(), { [i]: true }));
+    Store.setSetting('lcPack', i);
+    if (window.Sound) Sound.correct();
+    await modal({ title: '✓ 내려받기 완료', html: `<p><b>${pk.name}</b> 묶음을 저장했어요. 이제 이 묶음 문제로 공부합니다.</p>`, buttons: [{ label: '확인', primary: true }] });
+  }
+  if (currentRoute() === 'listening') Views.listening();
+}
 
 Views.settings = () => {
   const d = Store.data, s = d.settings;
@@ -910,6 +1034,12 @@ const Actions = {
   lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else playFor(q); },
   ldir() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else Listen.directions(q.part, S.dirIntro); },
   dirgo() { const q = Q[curId()]; Listen.stop(); (S.dirDone = S.dirDone || {})[q.part] = true; renderSession(); window.scrollTo(0, 0); },
+  lcpack(i) {
+    i = +i;
+    if (!packReady(i)) return downloadPack(i);
+    Store.setSetting('lcPack', i); Views.listening();
+  },
+  lcget(i) { downloadPack(+i); },
   voiceSample() { Listen.sample(document.getElementById('listenVoice').value); },
   lplayq(id) { playFor(Q[id]); },
   lrate(v) { Store.setSetting('listenRate', +v); Listen.applyRate(); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },

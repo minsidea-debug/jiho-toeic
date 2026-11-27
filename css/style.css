@@ -411,3 +411,7 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .graphic .tbl { width: 100%; }
 /* 리스닝 Part 1 사진 */
 .p1-img { display: block; width: 100%; max-width: 560px; max-height: 420px; object-fit: contain; margin: 10px auto; background: var(--bg); }
+/* 리스닝 실전 모드 안내 */
+.directions .dir-en { font-family: var(--font-en); line-height: 1.6; margin: 12px 0 4px; }
+.directions .listen-ctrl { margin-top: 14px; }
+@media (max-width: 800px) { .directions kbd { display: none; } }

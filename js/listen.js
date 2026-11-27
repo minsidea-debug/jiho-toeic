@@ -52,12 +52,13 @@
     if (playing) setPlaying(false);
   }
   // lines: [[accent, text, pause(ms), 화자번호], ...]
-  function speakLines(lines, my) {
+  function speakLines(lines, my, done) {
+    done = done || (() => setPlaying(false));
     if (!('speechSynthesis' in window)) { setPlaying(false); alert('이 기기에서는 음성 재생을 지원하지 않아요.'); return; }
     let i = 0;
     const next = () => {
       if (my !== token) return;
-      if (i >= lines.length) { setPlaying(false); return; }
+      if (i >= lines.length) { done(); return; }
       const [accent, text, pause, who] = lines[i++];
       const u = new SpeechSynthesisUtterance(text);
       const v = pickVoice(accent, who || 0);
@@ -69,20 +70,33 @@
     };
     next();
   }
-  // 음성 파일이 있으면 파일로, 없거나 실패하면 기기 음성으로
-  function play(key, lines) {
+  // 음성 파일이 있으면 파일로, 없거나 실패하면 기기 음성으로. items = [{ key, lines }, ...] 차례로 재생
+  function playSeq(items) {
     stop();
     const my = ++token;
     setPlaying(true);
-    if (window.TOEIC_AUDIO && TOEIC_AUDIO[key]) {
-      audio = new Audio('audio/' + key + '.mp3');
-      audio.defaultPlaybackRate = audio.playbackRate = rate();   // (불러올 때 playbackRate 가 default 로 돌아가므로 둘 다)
-      audio.onended = () => { if (my === token) { audio = null; setPlaying(false); } };
-      audio.onerror = () => { if (my === token) { audio = null; speakLines(lines, my); } };
-      audio.play().catch(() => { if (my === token) { audio = null; speakLines(lines, my); } });
-      return;
-    }
-    speakLines(lines, my);
+    let i = 0;
+    const next = () => {
+      if (my !== token) return;
+      if (i >= items.length) { setPlaying(false); return; }
+      const { key, lines } = items[i++];
+      const fallback = () => { if (my === token) { audio = null; speakLines(lines, my, next); } };
+      if (window.TOEIC_AUDIO && TOEIC_AUDIO[key]) {
+        audio = new Audio('audio/' + key + '.mp3');
+        audio.defaultPlaybackRate = audio.playbackRate = rate();   // (불러올 때 playbackRate 가 default 로 돌아가므로 둘 다)
+        audio.onended = () => { if (my === token) { audio = null; setTimeout(next, 600); } };
+        audio.onerror = fallback;
+        audio.play().catch(fallback);
+      } else speakLines(lines, my, next);
+    };
+    next();
+  }
+  const play = (key, lines) => playSeq([{ key, lines }]);
+  // 실전 모드 파트 안내 (withIntro: 리스닝 전체 안내도 먼저)
+  function directions(part, withIntro) {
+    const D = window.TOEIC_LC_DIR || {};
+    const item = k => ({ key: 'dir-' + (k === 'intro' ? 'intro' : 'p' + k), lines: [['US', (D[k] || {}).en || '', 400, 0]] });
+    playSeq((withIntro ? [item('intro')] : []).concat([item(part)]));
   }
 
   // Part 1: 사진 묘사 문장 (A)~(D)
@@ -120,5 +134,5 @@
   // 속도를 바꾸면 재생 중인 음성 파일에도 바로 적용
   function applyRate() { if (audio) audio.defaultPlaybackRate = audio.playbackRate = rate(); }
 
-  window.Listen = { part1, part2, talk, stop, sample, applyRate, voices: bestVoices, isPlaying: () => playing, onChange: f => listeners.push(f) };
+  window.Listen = { part1, part2, talk, directions, stop, sample, applyRate, voices: bestVoices, isPlaying: () => playing, onChange: f => listeners.push(f) };
 })();

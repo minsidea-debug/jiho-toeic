@@ -244,6 +244,9 @@ function explainBox(q, pick) {
 function renderSession() {
   const id = curId(), q = Q[id], set = SETS[q.setId];
   const test = S.mode === 'test', n = S.qids.length;
+  // 실전 모드 리스닝: 각 파트 첫 문제 전에 시험장처럼 안내(Directions)
+  S.onDir = false;
+  if (test && isListenPart(q.part) && !(S.dirDone || {})[q.part]) return renderDirections(q);
   const checked = S.checked[id], pick = S.picks[id];
   const answered = Object.keys(test ? S.picks : S.checked).length;
 
@@ -313,6 +316,33 @@ function fillVoiceSelect() {
 }
 if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', fillVoiceSelect);
 
+/* ---------- 실전 모드 리스닝 안내(Directions) ---------- */
+function renderDirections(q) {
+  S.onDir = true;
+  const D = window.TOEIC_LC_DIR || {}, p = q.part;
+  const withIntro = !Object.keys(S.dirDone || {}).length;    // 이 세션의 첫 리스닝 파트면 전체 안내도
+  const block = k => D[k] ? `<p class="dir-en">${esc(D[k].en)}</p><p class="ko small">${esc(D[k].ko)}</p>` : '';
+  $view.innerHTML = `
+    <div class="session-head">
+      <div><b>${esc(S.title)}</b> <span class="pill">실전 모드</span></div>
+      <div class="timer" data-timer></div>
+      <button class="btn ghost small" data-act="quit">그만하기</button>
+    </div>
+    <section class="card directions">
+      <div class="qnum">📢 ${PART_INFO[p].name} · ${PART_INFO[p].title} — 안내 (Directions)</div>
+      <p class="small muted">실제 시험장에서는 문제 전에 이 안내가 방송으로 나옵니다. 안내가 끝나면 문제가 시작돼요.</p>
+      ${withIntro ? block('intro') : ''}
+      ${block(p)}
+      <div class="listen-ctrl">
+        <button class="btn" data-act="ldir">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+        <button class="btn primary" data-act="dirgo">문제 시작 → <kbd>Enter</kbd></button>
+      </div>
+    </section>`;
+  updateTimer();
+  const dkey = 'dir' + p;
+  if (S.playedId !== dkey) { S.playedId = dkey; S.dirIntro = withIntro; Listen.directions(p, withIntro); }
+}
+
 /* ---------- 리스닝: 재생 버튼 · 속도 · (정답 후) 대본 ---------- */
 const RATES = [[0.8, '0.8배'], [1, '1.0배'], [1.2, '1.2배']];
 function listenBox(q, reveal) {
@@ -356,6 +386,7 @@ function talkBox(set, q, setDone, showKo) {
   </div>
   <div class="qtext">${esc(q.q)}${showKo && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>`;
 }
+if (window.Listen) Listen.onChange(() => { const d = document.querySelector('[data-act="ldir"]'); if (d) d.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
 if (window.Listen) Listen.onChange(() => { const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
 
 function updateTimer() {
@@ -877,6 +908,8 @@ const Actions = {
     startSession({ title: `${PART_INFO[p].name} · ${PART_INFO[p].title}`, part: p, qids: pickQids(p, cnt), mode });
   },
   lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else playFor(q); },
+  ldir() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else Listen.directions(q.part, S.dirIntro); },
+  dirgo() { const q = Q[curId()]; Listen.stop(); (S.dirDone = S.dirDone || {})[q.part] = true; renderSession(); window.scrollTo(0, 0); },
   voiceSample() { Listen.sample(document.getElementById('listenVoice').value); },
   lplayq(id) { playFor(Q[id]); },
   lrate(v) { Store.setSetting('listenRate', +v); Listen.applyRate(); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
@@ -1002,6 +1035,7 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) return; // 버튼 기본 동작에 맡김
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   const r = currentRoute(), k = e.key.toLowerCase();
+  if (r === 'session' && S && !S.done && S.onDir) { if (k === 'enter') { e.preventDefault(); Actions.dirgo(); } return; }
   if (r === 'session' && S && !S.done) {
     const map = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 };
     if (k in map) { e.preventDefault(); Actions.pick(map[k]); }

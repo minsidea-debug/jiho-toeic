@@ -15,6 +15,7 @@
 - 리스닝 추가 묶음 `data/part1_NN.js`~`part4_NN.js` (Part 1 140 · Part 2·3·4 각 300문제): `data/lc_util.js` 의 `LC.p1/p2/talks` 로 등록 (정답 위치를 문제 번호로 고르게 섞고 해설 속 (A)~(D)도 맞춤). 문제 ID = 줄/세트 순서이므로 **순서 바꾸기·중간 삽입 금지**, 새 묶음은 뒤에 추가 후 index.html·sw.js 에 등록
 - `data/lc_packs.js` – 리스닝 문제 묶음(기본·추가 1~3) 파일 목록·용량. **리스닝 문제나 음성을 바꾸면 `node sources/build_packs.js` 로 다시 만들 것**. 기본은 바로 사용, 추가는 내려받기(용량 팝업 → LTE/5G면 한 번 더 확인) 후 사용. 받은 파일은 캐시 `jiho-media`(sw.js가 앱 업데이트 때도 유지). **이미 있는 음성·사진을 다시 만들면 sw.js 의 `MEDIA_STALE` 에 경로를 넣어** 폰의 예전 저장본을 지우게 할 것
 - 음성 생성은 GPU(RTX 3080, onnxruntime-gpu) 우선 — CPU 대비 약 3.4배 빠름. `--cpu` 로 CPU만 사용 가능
+- `data/line_timing.js` – 대본 줄별 시간표(정답 화면 대본 상자: 재생·멈춤·다시 듣기, 읽는 줄 표시, 줄 누르면 그 부분부터). **음성을 새로 만들면 `sources/tts/line_timing.py` 도 다시 실행** (sets.json 기준, 줄 사이 쉼을 찾아 나눔)
 - `data/listen_directions.js` – 실전 모드 파트 안내(Directions) 영어·한국어 (음성 audio/dir-*.mp3)
 - `js/listen.js` – 리스닝 음성(Web Speech API, 파일 없음). `Listen.part2(q)` / `Listen.stop()`, 속도 `settings.listenRate`. 조사·계획: `sources/LISTENING_PLAN.md`
 - `data/words_elem|middle|high|univ.js` – 단어 외우기 데이터 (`window.TOEIC_WORDS.<level>`), 형식은 `words_elem.js` 상단 주석

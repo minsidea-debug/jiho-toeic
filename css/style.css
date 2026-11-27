@@ -436,3 +436,9 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .rw { transition: background-color .12s; }
 .rw.reading { background: var(--hl); color: var(--hl-text); text-shadow: 0.35px 0 0 currentColor, -0.35px 0 0 currentColor; box-shadow: 0 0 0 2px var(--hl); }
 .play-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+/* 대본 상자: 재생 버튼 · 읽는 줄 표시 */
+.script-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.script-tip { margin: 4px 0 2px; font-family: var(--font-ui); }
+.script .sl { cursor: pointer; padding: 4px 8px; margin: 4px -8px 0; border-left: 3px solid transparent; transition: background-color .15s, border-color .15s; }
+.script .sl:hover { background: var(--pri-soft); }
+.script .sl.playing-line { background: var(--pri-soft); border-left-color: var(--pri); }

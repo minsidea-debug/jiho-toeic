@@ -41,7 +41,8 @@ const lcGot = () => Store.data.settings.lcGot || {};
 const packReady = p => p === 0 || !canDownload || !!lcGot()[p];
 const curPack = () => { const p = Store.data.settings.lcPack || 0; return packReady(p) ? p : 0; };
 const mb = b => (b / 1048576).toFixed(1) + 'MB';
-const playFor = q => (q.part === 1 ? Listen.part1(q) : q.part === 2 ? Listen.part2(q) : Listen.talk(SETS[q.setId]));
+const playFor = (q, from) => { lastQ = q.id; return q.part === 1 ? Listen.part1(q, from) : q.part === 2 ? Listen.part2(q, from) : Listen.talk(SETS[q.setId], from); };
+let lastQ = '';   // 지금(마지막으로) 듣는 문제 ID
 const LISTEN_SOON = {};
 
 /* ---------- 도우미 ---------- */
@@ -374,8 +375,7 @@ function listenBox(q, reveal) {
       <span class="play-btns"><button class="btn primary" data-act="lplay">${dirBtnLabel()}</button><button class="btn ghost" data-act="lrestart" title="처음부터">⏮ 처음부터</button></span>
       <div class="tabs small-tabs">${RATES.map(([v, t]) => `<button class="${v === r ? 'on' : ''}" data-act="lrate" data-arg="${v}">${t}</button>`).join('')}</div>
     </div>
-    ${reveal ? `<div class="script"><div class="small muted">📜 대본</div>${q.part === 2 ? `<div class="script-q"><b>Q.</b> ${esc(q.q)}<div class="ko small">${esc(q.ko || '')}</div></div>` : ''}
-      ${q.choices.map((c, i) => `<div class="script-a ${i === q.answer ? 'ans' : ''}"><b>(${LETTERS[i]})</b> ${esc(c)}<div class="ko small">${esc((q.choicesKo || [])[i] || '')}</div></div>`).join('')}</div>` : ''}
+    ${reveal ? scriptPanel(q) : ''}
   </div>`;
 }
 function ctrlRow() {
@@ -391,9 +391,22 @@ function graphicTable(g) {
     `<tr>${r.map(c => i === 0 ? `<th>${esc(c)}</th>` : `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
 }
 const SPK = { W: '여자', M: '남자', W2: '여자 2', M2: '남자 2' };
-function scriptBox(set) {
-  return `<div class="script"><div class="small muted">📜 대본${set.title ? ' · ' + esc(set.title) : ''}</div>
-    ${set.script.map(([who, t], i) => `<div class="script-a"><b>${SPK[who] || who}:</b> ${esc(t)}<div class="ko small">${esc((set.ko || [])[i] || '')}</div></div>`).join('')}</div>`;
+/* ---------- 대본 상자: 재생 · 멈춤 · 다시 듣기 + 지금 읽는 줄 표시 + 줄 누르면 그 부분부터 ----------
+   줄 시간표 = data/line_timing.js (TOEIC_LINES[음성키]) */
+const audioKey = q => (q.part <= 2 ? q.id : q.setId && SETS[q.setId].id);
+const scriptBtnLabel = qid => (qid === lastQ ? ({ playing: '⏸ 멈춤', paused: '▶ 이어 듣기', idle: '▶ 재생' })[Listen.state()] : '▶ 재생');
+function scriptPanel(q) {
+  const set = SETS[q.setId], key = audioKey(q);
+  const qid = q.part <= 2 ? q.id : set.questions[0].id;   // Part 3·4 는 세트 전체가 한 음성
+  const lines = q.part === 1 ? q.choices.map((c, i) => [`(${LETTERS[i]})`, c, (q.choicesKo || [])[i], i === q.answer])
+    : q.part === 2 ? [['Q.', q.q, q.ko, false]].concat(q.choices.map((c, i) => [`(${LETTERS[i]})`, c, (q.choicesKo || [])[i], i === q.answer]))
+    : set.script.map(([who, t], i) => [(SPK[who] || who) + ':', t, (set.ko || [])[i], false]);
+  return `<div class="script">
+    <div class="script-head"><span class="small muted">📜 대본${q.part >= 3 && set.title ? ' · ' + esc(set.title) : ''}</span>
+      <span class="play-btns"><button class="btn small" data-act="lsplay" data-arg="${qid}">${scriptBtnLabel(qid)}</button><button class="btn ghost small" data-act="lsrestart" data-arg="${qid}">⏮ 다시 듣기</button></span></div>
+    <div class="small muted script-tip">줄을 누르면 그 부분부터 들려줘요</div>
+    ${lines.map(([lab, t, ko, ans], i) => `<div class="script-a sl ${ans ? 'ans' : ''}" data-k="${key}" data-l="${i}" data-act="lseek" data-arg="${qid}|${i}"><b>${esc(lab)}</b> ${esc(t)}<div class="ko small">${esc(ko || '')}</div></div>`).join('')}
+  </div>`;
 }
 // Part 3·4: 재생 버튼 · 표(있으면) · 문제 글 · (모두 풀면) 대본
 function talkBox(set, q, setDone, showKo) {
@@ -402,12 +415,31 @@ function talkBox(set, q, setDone, showKo) {
     <div class="listen-guide">🎧 ${q.part === 3 ? '대화' : '담화'}를 듣고 문제에 답하세요. <span class="muted small">(이 ${q.part === 3 ? '대화' : '담화'}의 ${no} / ${set.questions.length}번째 문제)</span></div>
     ${ctrlRow()}
     ${graphicTable(set.graphic)}
-    ${setDone ? scriptBox(set) : ''}
+    ${setDone ? scriptPanel(q) : ''}
   </div>
   <div class="qtext">${esc(q.q)}${showKo && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>`;
 }
 const dirBtnLabel = () => ({ playing: '⏸ 멈추기', paused: '▶ 이어 듣기', idle: '▶ 다시 듣기' })[Listen.state()];
 if (window.Listen) Listen.onChange(() => { const d = document.querySelector('[data-act="ldir"]'); if (d) d.textContent = dirBtnLabel(); });
+// 대본에서 지금 읽는 줄 표시 (줄 사이 쉼에서도 직전 줄 유지, 끝나면 해제)
+let lineEl = null;
+if (window.Listen) Listen.onTick((key, t) => {
+  const T = (window.TOEIC_LINES || {})[key];
+  let el = null;
+  if (T && t >= 0 && t <= T[T.length - 1][1] + 0.6) {
+    let i = -1;
+    T.forEach(([a], k) => { if (t >= a - 0.15) i = k; });
+    if (i >= 0) el = document.querySelector(`.sl[data-k="${key}"][data-l="${i}"]`);
+  }
+  if (el === lineEl) return;
+  if (lineEl) lineEl.classList.remove('playing-line');
+  lineEl = el;
+  if (el) {
+    el.classList.add('playing-line');
+    const r = el.getBoundingClientRect();
+    if (r.top < 60 || r.bottom > innerHeight - 90) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+});
 // 읽는 단어 표시: 지금 읽는 단어 하나만 강조, 지나가면 원래대로
 let readingEl = null;
 if (window.Listen) Listen.onTick((key, t) => {
@@ -429,11 +461,11 @@ if (window.Listen) Listen.onTick((key, t) => {
 if (window.Listen) Listen.onChange(() => {
   const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = dirBtnLabel();
   // 결과 화면의 문제별 듣기 버튼: 지금 듣는 문제만 멈추기/이어 듣기 표시
+  document.querySelectorAll('[data-act="lsplay"]').forEach(x => { x.textContent = scriptBtnLabel(x.dataset.arg); });
   document.querySelectorAll('[data-act="lplayq"]').forEach(x => {
     x.textContent = x.dataset.arg === lastQ && Listen.state() !== 'idle' ? (Listen.state() === 'playing' ? '⏸ 멈추기' : '▶ 이어 듣기') : '🔊 듣기';
   });
 });
-let lastQ = '';
 
 function updateTimer() {
   const el = document.querySelector('[data-timer]');
@@ -472,7 +504,8 @@ Views.result = () => {
         ${q.img ? `<img class="p1-img" src="${esc(q.img)}" alt="Part 1 사진">` : ''}
         <div class="qtext">${esc(q.q)}${isListenPart(q.part) && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>
         ${isListenPart(q.part) ? `<button class="btn ghost small" data-act="lplayq" data-arg="${q.id}">🔊 듣기</button>` : ''}
-        ${set.script ? `<details><summary>대본 보기</summary>${graphicTable(set.graphic)}${scriptBox(set)}</details>` : ''}
+        ${set.script ? `<details><summary>대본 보기</summary>${graphicTable(set.graphic)}${scriptPanel(q)}</details>` : ''}
+        ${q.part <= 2 && isListenPart(q.part) ? `<details><summary>대본 보기</summary>${scriptPanel(q)}</details>` : ''}
         <ol class="opts">${q.choices.map((ch, j) => `<li class="${j === q.answer ? 'ans' : j === p ? 'mine' : ''}">(${LETTERS[j]}) ${esc(ch)}</li>`).join('')}</ol>
         ${explainBox(q, p)}
       </div></details>`;
@@ -1082,11 +1115,23 @@ const Actions = {
   },
   lcget(i) { downloadPack(+i); },
   voiceSample() { Listen.sample(document.getElementById('listenVoice').value); },
+  lsplay(qid) {   // 대본 상자: 재생 ↔ 멈춤 ↔ 이어 듣기
+    const st = Listen.state();
+    if (qid === lastQ && st === 'playing') Listen.pause();
+    else if (qid === lastQ && st === 'paused') Listen.resume();
+    else playFor(Q[qid]);
+  },
+  lsrestart(qid) { playFor(Q[qid]); },
+  lseek(arg) {    // 대본 줄을 누르면 그 줄부터
+    const [qid, i] = arg.split('|'), q = Q[qid];
+    const T = (window.TOEIC_LINES || {})[audioKey(q)];
+    playFor(q, T && T[+i] ? Math.max(0, T[+i][0] - 0.1) : 0);
+  },
   lplayq(id) {
     const st = Listen.state();
     if (id === lastQ && st === 'playing') Listen.pause();
     else if (id === lastQ && st === 'paused') Listen.resume();
-    else { lastQ = id; playFor(Q[id]); }
+    else playFor(Q[id]);
   },
   lrate(v) { Store.setSetting('listenRate', +v); Listen.applyRate(); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
   pick(i) {

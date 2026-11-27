@@ -87,20 +87,36 @@
     const next = () => {
       if (my !== token) return;
       if (i >= items.length) { setPlaying(false); return; }
-      const { key, lines } = items[i++];
+      const { key, lines, from } = items[i++];
       curKey = key;
       const fallback = () => { if (my === token) { audio = null; speakLines(lines, my, next); } };
       if (window.TOEIC_AUDIO && TOEIC_AUDIO[key]) {
-        audio = new Audio('audio/' + key + '.mp3');
-        audio.defaultPlaybackRate = audio.playbackRate = rate();   // (불러올 때 playbackRate 가 default 로 돌아가므로 둘 다)
-        audio.onended = () => { if (my === token) { audio = null; setTimeout(next, 600); } };
-        audio.onerror = fallback;
-        audio.play().then(() => loop(my)).catch(fallback);
+        const src = 'audio/' + key + '.mp3';
+        audio = new Audio();
+        const el = audio;
+        const start = url => {
+          if (my !== token) return;
+          el.src = url;
+          el.defaultPlaybackRate = el.playbackRate = rate();   // (불러올 때 playbackRate 가 default 로 돌아가므로 둘 다)
+          if (from) {   // 시작 위치로 이동 (준비되기 전엔 무시될 수 있어 몇 번 더 시도)
+            const seek = () => { if (el.currentTime < from - 0.3) el.currentTime = from; };
+            el.currentTime = from;
+            ['loadedmetadata', 'canplay', 'canplaythrough'].forEach(ev => el.addEventListener(ev, seek, { once: true }));
+          }
+          el.play().then(() => loop(my)).catch(fallback);
+        };
+        el.onended = () => { if (url0) URL.revokeObjectURL(url0); if (my === token) { audio = null; setTimeout(next, 600); } };
+        el.onerror = fallback;
+        let url0 = '';
+        // 중간부터 재생할 때는 파일 전체를 먼저 받아 메모리에서 재생 (서버·폰 저장본이 '부분 전송'을 지원하지 않아도 이동 가능)
+        if (from && location.protocol.startsWith('http')) {
+          fetch(src).then(r => (r.ok ? r.blob() : Promise.reject())).then(b => { url0 = URL.createObjectURL(b); start(url0); }).catch(() => start(src));
+        } else start(src);
       } else speakLines(lines, my, next);
     };
     next();
   }
-  const play = (key, lines) => playSeq([{ key, lines }]);
+  const play = (key, lines, from) => playSeq([{ key, lines, from }]);   // from = 시작 위치(초)
   // 실전 모드 파트 안내 (withIntro: 리스닝 전체 안내도 먼저)
   function directions(part, withIntro) {
     const D = window.TOEIC_LC_DIR || {};
@@ -109,23 +125,23 @@
   }
 
   // Part 1: 사진 묘사 문장 (A)~(D)
-  function part1(q) {
-    play(q.id, q.choices.map((c, i) => [q.voice || 'US', ABC[i] + '. ' + c, 900, 0]));
+  function part1(q, from) {
+    play(q.id, q.choices.map((c, i) => [q.voice || 'US', ABC[i] + '. ' + c, 900, 0]), from);
   }
   // Part 2: 질문 → 응답 (A)(B)(C)
-  function part2(q) {
+  function part2(q, from) {
     const [qa, aa] = q.voices || ['US', 'UK'];
     const lines = [[qa, q.q, 900, 0]];
     q.choices.forEach((c, i) => lines.push([aa, ABC[i] + '. ' + c, 800, 1]));
-    play(q.id, lines);
+    play(q.id, lines, from);
   }
   // Part 3·4: 대화·담화 (화자마다 다른 목소리)
-  function talk(set) {
+  function talk(set, from) {
     const order = {};
     play(set.id, set.script.map(([who, text]) => {
       if (!(who in order)) order[who] = Object.keys(order).length;
       return [(set.voices || {})[who] || 'US', text, 600, order[who]];
-    }));
+    }), from);
   }
   // 설정 화면 '미리 듣기'
   function sample(voiceURI) {

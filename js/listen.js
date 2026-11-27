@@ -9,12 +9,20 @@
 (function () {
   const LANG = { US: 'en-US', UK: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
   const ABC = ['A', 'B', 'C', 'D'];
-  let token = 0, playing = false, audio = null;
-  const listeners = [];
+  let token = 0, playing = false, paused = false, audio = null, curKey = '';
+  const listeners = [], tickers = [];
 
   function settings() { return (typeof Store !== 'undefined' && Store.data && Store.data.settings) || {}; }   // (Store 는 const 라 window.Store 로는 안 보임)
   function rate() { return settings().listenRate || 1; }
-  function setPlaying(v) { playing = v; listeners.forEach(f => f(v)); }
+  function setPlaying(v) { playing = v; if (!v) { paused = false; curKey = ''; tick(); } listeners.forEach(f => f(v)); }
+  // 재생 위치 알림 (읽는 단어 표시용): f(음성키, 현재초) — 음성 파일 재생 중에만, 멈추면 마지막 위치 유지
+  function tick() { tickers.forEach(f => f(curKey, audio ? audio.currentTime : -1)); }
+  // 0.08초마다 위치 확인 (requestAnimationFrame 은 화면이 가려지면 멈춰서 타이머 사용)
+  let timer = null;
+  function loop(my) {
+    clearInterval(timer);
+    timer = setInterval(() => { if (my !== token || !audio) { clearInterval(timer); return; } if (!paused) tick(); }, 80);
+  }
 
   /* ---------- 기기 목소리 고르기 ---------- */
   function englishVoices() {
@@ -46,7 +54,7 @@
 
   /* ---------- 재생 ---------- */
   function stop() {
-    token++;
+    token++; paused = false;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     if (audio) { audio.pause(); audio = null; }
     if (playing) setPlaying(false);
@@ -80,13 +88,14 @@
       if (my !== token) return;
       if (i >= items.length) { setPlaying(false); return; }
       const { key, lines } = items[i++];
+      curKey = key;
       const fallback = () => { if (my === token) { audio = null; speakLines(lines, my, next); } };
       if (window.TOEIC_AUDIO && TOEIC_AUDIO[key]) {
         audio = new Audio('audio/' + key + '.mp3');
         audio.defaultPlaybackRate = audio.playbackRate = rate();   // (불러올 때 playbackRate 가 default 로 돌아가므로 둘 다)
         audio.onended = () => { if (my === token) { audio = null; setTimeout(next, 600); } };
         audio.onerror = fallback;
-        audio.play().catch(fallback);
+        audio.play().then(() => loop(my)).catch(fallback);
       } else speakLines(lines, my, next);
     };
     next();
@@ -131,8 +140,22 @@
   // 목소리 목록은 늦게 준비되는 기기가 있어 미리 불러 둠
   if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', () => listeners.forEach(f => f(playing))); }
 
+  // 멈추기 / 이어 듣기 (음성 파일이면 멈춘 곳에서 그대로, 기기 음성이면 가능한 경우만)
+  function pause() {
+    if (!playing || paused) return;
+    paused = true;
+    if (audio) audio.pause(); else if ('speechSynthesis' in window) speechSynthesis.pause();
+    listeners.forEach(f => f(playing));
+  }
+  function resume() {
+    if (!paused) return;
+    paused = false;
+    if (audio) audio.play(); else if ('speechSynthesis' in window) speechSynthesis.resume();
+    listeners.forEach(f => f(playing));
+  }
+  const state = () => (!playing ? 'idle' : paused ? 'paused' : 'playing');
   // 속도를 바꾸면 재생 중인 음성 파일에도 바로 적용
   function applyRate() { if (audio) audio.defaultPlaybackRate = audio.playbackRate = rate(); }
 
-  window.Listen = { part1, part2, talk, directions, stop, sample, applyRate, voices: bestVoices, isPlaying: () => playing, onChange: f => listeners.push(f) };
+  window.Listen = { part1, part2, talk, directions, stop, pause, resume, state, onTick: f => tickers.push(f), sample, applyRate, voices: bestVoices, isPlaying: () => playing, onChange: f => listeners.push(f) };
 })();

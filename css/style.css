@@ -432,3 +432,7 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .modal-warn { color: var(--warn); }
 .modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .dl-bar { height: 10px; }
+/* 읽는 단어 표시: 형광펜 + 굵게 보이기(글자 폭이 안 바뀌게 그림자로) */
+.rw { transition: background-color .12s; }
+.rw.reading { background: var(--hl); color: var(--hl-text); text-shadow: 0.35px 0 0 currentColor, -0.35px 0 0 currentColor; box-shadow: 0 0 0 2px var(--hl); }
+.play-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }

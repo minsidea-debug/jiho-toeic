@@ -338,7 +338,9 @@ function renderDirections(q) {
   S.onDir = true;
   const D = window.TOEIC_LC_DIR || {}, p = q.part;
   const withIntro = !Object.keys(S.dirDone || {}).length;    // 이 세션의 첫 리스닝 파트면 전체 안내도
-  const block = k => D[k] ? `<p class="dir-en">${esc(D[k].en)}</p><p class="ko small">${esc(D[k].ko)}</p>` : '';
+  // 영어 안내문은 단어마다 <span> — 읽는 단어를 실시간으로 표시 (data/listen_timing.js)
+  const words = (k, text) => text.split(' ').map((w, i) => `<span class="rw" data-k="dir-${k === 'intro' ? 'intro' : 'p' + k}" data-i="${i}">${esc(w)}</span>`).join(' ');
+  const block = k => D[k] ? `<p class="dir-en">${words(k, D[k].en)}</p><p class="ko small">${esc(D[k].ko)}</p>` : '';
   $view.innerHTML = `
     <div class="session-head">
       <div><b>${esc(S.title)}</b> <span class="pill">실전 모드</span></div>
@@ -351,7 +353,8 @@ function renderDirections(q) {
       ${withIntro ? block('intro') : ''}
       ${block(p)}
       <div class="listen-ctrl">
-        <button class="btn" data-act="ldir">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+        <button class="btn" data-act="ldir">${dirBtnLabel()}</button>
+        <button class="btn ghost" data-act="ldirRestart">⏮ 처음부터</button>
         <button class="btn primary" data-act="dirgo">문제 시작 → <kbd>Enter</kbd></button>
       </div>
     </section>`;
@@ -368,7 +371,7 @@ function listenBox(q, reveal) {
     <div class="listen-guide">🎧 ${q.part === 1 ? '사진을 보고 문장 4개를 들은 뒤, 사진을 가장 잘 묘사한 것을 고르세요.' : '질문과 응답 3개를 듣고 가장 알맞은 응답을 고르세요.'}</div>
     ${q.img ? `<img class="p1-img" src="${esc(q.img)}" alt="Part 1 사진">` : ''}
     <div class="listen-ctrl">
-      <button class="btn primary" data-act="lplay">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+      <span class="play-btns"><button class="btn primary" data-act="lplay">${dirBtnLabel()}</button><button class="btn ghost" data-act="lrestart" title="처음부터">⏮ 처음부터</button></span>
       <div class="tabs small-tabs">${RATES.map(([v, t]) => `<button class="${v === r ? 'on' : ''}" data-act="lrate" data-arg="${v}">${t}</button>`).join('')}</div>
     </div>
     ${reveal ? `<div class="script"><div class="small muted">📜 대본</div>${q.part === 2 ? `<div class="script-q"><b>Q.</b> ${esc(q.q)}<div class="ko small">${esc(q.ko || '')}</div></div>` : ''}
@@ -378,7 +381,7 @@ function listenBox(q, reveal) {
 function ctrlRow() {
   const r = Store.data.settings.listenRate || 1;
   return `<div class="listen-ctrl">
-      <button class="btn primary" data-act="lplay">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+      <span class="play-btns"><button class="btn primary" data-act="lplay">${dirBtnLabel()}</button><button class="btn ghost" data-act="lrestart" title="처음부터">⏮ 처음부터</button></span>
       <div class="tabs small-tabs">${RATES.map(([v, t]) => `<button class="${v === r ? 'on' : ''}" data-act="lrate" data-arg="${v}">${t}</button>`).join('')}</div>
     </div>`;
 }
@@ -403,8 +406,34 @@ function talkBox(set, q, setDone, showKo) {
   </div>
   <div class="qtext">${esc(q.q)}${showKo && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>`;
 }
-if (window.Listen) Listen.onChange(() => { const d = document.querySelector('[data-act="ldir"]'); if (d) d.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
-if (window.Listen) Listen.onChange(() => { const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
+const dirBtnLabel = () => ({ playing: '⏸ 멈추기', paused: '▶ 이어 듣기', idle: '▶ 다시 듣기' })[Listen.state()];
+if (window.Listen) Listen.onChange(() => { const d = document.querySelector('[data-act="ldir"]'); if (d) d.textContent = dirBtnLabel(); });
+// 읽는 단어 표시: 지금 읽는 단어 하나만 강조, 지나가면 원래대로
+let readingEl = null;
+if (window.Listen) Listen.onTick((key, t) => {
+  const T = (window.TOEIC_TIMING || {})[key];
+  let el = null;
+  if (T && t >= 0) {
+    const i = T.findIndex(([a, b]) => t >= a && t < b);
+    if (i >= 0) el = document.querySelector(`.rw[data-k="${key}"][data-i="${i}"]`);
+  }
+  if (el === readingEl) return;
+  if (readingEl) readingEl.classList.remove('reading');
+  readingEl = el;
+  if (el) {
+    el.classList.add('reading');
+    const r = el.getBoundingClientRect();   // 화면 밖이면 보이도록 스크롤
+    if (r.top < 60 || r.bottom > innerHeight - 90) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+});
+if (window.Listen) Listen.onChange(() => {
+  const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = dirBtnLabel();
+  // 결과 화면의 문제별 듣기 버튼: 지금 듣는 문제만 멈추기/이어 듣기 표시
+  document.querySelectorAll('[data-act="lplayq"]').forEach(x => {
+    x.textContent = x.dataset.arg === lastQ && Listen.state() !== 'idle' ? (Listen.state() === 'playing' ? '⏸ 멈추기' : '▶ 이어 듣기') : '🔊 듣기';
+  });
+});
+let lastQ = '';
 
 function updateTimer() {
   const el = document.querySelector('[data-timer]');
@@ -442,7 +471,7 @@ Views.result = () => {
         ${set.passage ? `<details><summary>지문 보기</summary><div class="passage-body">${renderPassage(set, q)}</div></details>` : ''}
         ${q.img ? `<img class="p1-img" src="${esc(q.img)}" alt="Part 1 사진">` : ''}
         <div class="qtext">${esc(q.q)}${isListenPart(q.part) && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>
-        ${isListenPart(q.part) ? `<button class="btn ghost small" data-act="lplayq" data-arg="${q.id}">🔊 다시 듣기</button>` : ''}
+        ${isListenPart(q.part) ? `<button class="btn ghost small" data-act="lplayq" data-arg="${q.id}">🔊 듣기</button>` : ''}
         ${set.script ? `<details><summary>대본 보기</summary>${graphicTable(set.graphic)}${scriptBox(set)}</details>` : ''}
         <ol class="opts">${q.choices.map((ch, j) => `<li class="${j === q.answer ? 'ans' : j === p ? 'mine' : ''}">(${LETTERS[j]}) ${esc(ch)}</li>`).join('')}</ol>
         ${explainBox(q, p)}
@@ -1031,8 +1060,20 @@ const Actions = {
     const mode = document.querySelector('input[name=mode]:checked').value;
     startSession({ title: `${PART_INFO[p].name} · ${PART_INFO[p].title}`, part: p, qids: pickQids(p, cnt), mode });
   },
-  lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else playFor(q); },
-  ldir() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else Listen.directions(q.part, S.dirIntro); },
+  lplay() {   // 멈추기 ↔ 이어 듣기 (다 끝났으면 처음부터)
+    const st = Listen.state();
+    if (st === 'playing') Listen.pause();
+    else if (st === 'paused') Listen.resume();
+    else playFor(Q[curId()]);
+  },
+  lrestart() { playFor(Q[curId()]); },
+  ldir() {   // 멈추기 ↔ 이어 듣기 (다 끝났으면 처음부터)
+    const st = Listen.state();
+    if (st === 'playing') Listen.pause();
+    else if (st === 'paused') Listen.resume();
+    else Listen.directions(Q[curId()].part, S.dirIntro);
+  },
+  ldirRestart() { Listen.directions(Q[curId()].part, S.dirIntro); },
   dirgo() { const q = Q[curId()]; Listen.stop(); (S.dirDone = S.dirDone || {})[q.part] = true; renderSession(); window.scrollTo(0, 0); },
   lcpack(i) {
     i = +i;
@@ -1041,7 +1082,12 @@ const Actions = {
   },
   lcget(i) { downloadPack(+i); },
   voiceSample() { Listen.sample(document.getElementById('listenVoice').value); },
-  lplayq(id) { playFor(Q[id]); },
+  lplayq(id) {
+    const st = Listen.state();
+    if (id === lastQ && st === 'playing') Listen.pause();
+    else if (id === lastQ && st === 'paused') Listen.resume();
+    else { lastQ = id; playFor(Q[id]); }
+  },
   lrate(v) { Store.setSetting('listenRate', +v); Listen.applyRate(); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
   pick(i) {
     i = +i;

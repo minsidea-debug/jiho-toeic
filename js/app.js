@@ -13,11 +13,15 @@ const Q = {};      // 문제ID → 문제 (setId, part 포함)
 });
 
 const PART_INFO = {
+  2: { name: 'Part 2', title: '질의응답', desc: '질문 듣고 알맞은 응답 고르기 (보기 3개)', icon: '💬', sec: 25, listen: true },
   5: { name: 'Part 5', title: '단문 빈칸 채우기', desc: '한 문장 속 빈칸 – 문법·어휘', icon: '✏️', sec: 30 },
   6: { name: 'Part 6', title: '장문 빈칸 채우기', desc: '지문 속 빈칸 4개 – 문장 삽입 포함', icon: '📄', sec: 45 },
   7: { name: 'Part 7', title: '독해', desc: '이메일·기사·메시지 읽고 답하기', icon: '📰', sec: 60 },
 };
 const LETTERS = ['A', 'B', 'C', 'D'];
+const isListenPart = p => !!(PART_INFO[p] && PART_INFO[p].listen);
+const LISTEN_PARTS = [1, 2, 3, 4];
+const LISTEN_SOON = { 1: ['📷', '사진 묘사', '사진을 보고 알맞은 설명 고르기'], 3: ['👥', '짧은 대화', '2~3명의 대화 듣고 3문제'], 4: ['📢', '짧은 담화', '안내방송·메시지 듣고 3문제'] };
 
 /* ---------- 도우미 ---------- */
 const $view = document.getElementById('view');
@@ -83,7 +87,10 @@ function router() {
   clearInterval(timerId); timerId = null;
   const parts = location.hash.replace(/^#\/?/, '').split('/');
   const name = Views[parts[0]] ? parts[0] : 'home';
-  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === (NAV_MAP[name] || name)));
+  if (window.Listen) Listen.stop();
+  let navKey = NAV_MAP[name] || name;
+  if (['setup', 'session', 'result'].includes(name) && isListenPart(name === 'setup' ? +parts[1] : S && S.part)) navKey = 'listening';
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
   $view.innerHTML = '';
   Views[name](parts[1]);
   window.scrollTo(0, 0);
@@ -117,7 +124,7 @@ Views.home = () => {
       <button class="card action" data-act="quick" data-arg="wrong" ${wrongN ? '' : 'disabled'}><span class="ico">❌</span><b>오답 복습</b><span>${wrongN ? wrongN + '문제 남음' : '오답이 없어요'}</span></button>
       <button class="card action" data-act="nav" data-arg="#/words"><span class="ico">🔤</span><b>오늘의 단어 · ${WORD_LEVELS[Store.data.wordSettings.level]}</b><span>${wDone >= wd.ids.length && wd.ids.length ? '🎉 오늘 완료!' : `${wDone} / ${wd.ids.length}개 학습`}</span></button>
     </section>
-    <section class="card soon"><b>🎧 리스닝</b> <span class="muted">2단계에서 추가 예정입니다.</span></section>`;
+    <section class="home-quick"><button class="card action" data-act="quick" data-arg="p2"><span class="ico">🎧</span><b>리스닝 Part 2 · 10문제</b><span>질문을 듣고 알맞은 응답 고르기</span></button></section>`;
   fitQuote();
 };
 
@@ -150,7 +157,7 @@ Views.setup = arg => {
   const p = +arg;
   if (!PART_INFO[p]) return go('#/reading');
   const info = PART_INFO[p];
-  const counts = p === 5
+  const counts = p === 5 || p === 2
     ? [['10', '10문제'], ['20', '20문제'], ['all', '전체']]
     : [['1', '지문 1개'], ['2', '지문 2개'], ['all', '전체 지문']];
   $view.innerHTML = `
@@ -166,6 +173,7 @@ Views.setup = arg => {
         </div>
       </div>
       <p class="small muted">안 푼 문제가 먼저 나오고, 다 풀었으면 섞어서 다시 나옵니다.</p>
+      ${info.listen ? '<p class="small muted">🔊 소리를 켜 주세요. 기기에 있는 영어 목소리로 읽어 줍니다. (연습 모드: 정답 확인 후 대본·해석 공개)</p>' : ''}
       <button class="btn primary big" data-act="start" data-arg="${p}">시작하기 →</button>
     </section>`;
 };
@@ -220,7 +228,7 @@ function explainBox(q, pick) {
     <div class="verdict">${ok ? '⭕ 정답입니다!' : (pick == null ? '⚪ 풀지 않은 문제 · 정답은 (' + LETTERS[q.answer] + ')' : '❌ 아쉬워요! 정답은 (' + LETTERS[q.answer] + ')')}</div>
     ${q.type ? `<span class="tag">${esc(q.type)}</span>` : ''}
     <p>${esc(q.explain)}</p>
-    ${q.ko ? `<p class="ko">🇰🇷 ${esc(q.ko)}</p>` : ''}
+    ${q.ko && !isListenPart(q.part) ? `<p class="ko">🇰🇷 ${esc(q.ko)}</p>` : ''}
     ${set.ko ? `<details><summary>지문 해석 보기</summary><p class="ko pre">${esc(set.ko)}</p></details>` : ''}
     ${vocabChips(q.vocab, q.id)}
   </div>`;
@@ -232,11 +240,13 @@ function renderSession() {
   const checked = S.checked[id], pick = S.picks[id];
   const answered = Object.keys(test ? S.picks : S.checked).length;
 
+  const listen = isListenPart(q.part), reveal = listen && !test && checked;
   const choices = q.choices.map((c, i) => {
     let cls = 'choice';
     if (!test && checked) { if (i === q.answer) cls += ' correct'; else if (i === pick) cls += ' wrong'; }
     else if (pick === i) cls += ' picked';
-    return `<button class="${cls}" data-act="pick" data-arg="${i}" ${!test && checked ? 'disabled' : ''}><span class="letter">${LETTERS[i]}</span><span>${esc(c)}</span></button>`;
+    const label = listen && !reveal ? `<span class="muted">응답 (${LETTERS[i]})</span>` : `<span>${esc(c)}</span>`;
+    return `<button class="${cls}" data-act="pick" data-arg="${i}" ${!test && checked ? 'disabled' : ''}><span class="letter">${LETTERS[i]}</span>${label}</button>`;
   }).join('');
 
   const passage = set.passage
@@ -268,16 +278,34 @@ function renderSession() {
       ${passage}
       <section class="card qpanel">
         <div class="qnum">${PART_INFO[q.part].name} · 문제 ${S.idx + 1} / ${n}</div>
-        <div class="qtext">${esc(q.q)}</div>
+        ${listen ? listenBox(q, reveal) : `<div class="qtext">${esc(q.q)}</div>`}
         <div class="choices">${choices}</div>
         ${!test && checked ? explainBox(q, pick) : ''}
         <div class="qnav">${nav}</div>
       </section>
     </div>`;
   updateTimer();
+  // 리스닝: 새 문제로 넘어오면 자동 재생 (같은 문제를 다시 그릴 때는 재생 안 함)
+  if (listen && S.playedId !== id) { S.playedId = id; Listen.part2(q); }
   const cur = document.querySelector('.blank.current');
   if (cur) cur.scrollIntoView({ block: 'nearest' });
 }
+
+/* ---------- 리스닝: 재생 버튼 · 속도 · (정답 후) 대본 ---------- */
+const RATES = [[0.8, '0.8배'], [1, '1.0배'], [1.2, '1.2배']];
+function listenBox(q, reveal) {
+  const r = Store.data.settings.listenRate || 1;
+  return `<div class="listen-box">
+    <div class="listen-guide">🎧 질문과 응답 3개를 듣고 가장 알맞은 응답을 고르세요.</div>
+    <div class="listen-ctrl">
+      <button class="btn primary" data-act="lplay">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+      <div class="tabs small-tabs">${RATES.map(([v, t]) => `<button class="${v === r ? 'on' : ''}" data-act="lrate" data-arg="${v}">${t}</button>`).join('')}</div>
+    </div>
+    ${reveal ? `<div class="script"><div class="small muted">📜 대본</div><div class="script-q"><b>Q.</b> ${esc(q.q)}<div class="ko small">${esc(q.ko || '')}</div></div>
+      ${q.choices.map((c, i) => `<div class="script-a ${i === q.answer ? 'ans' : ''}"><b>(${LETTERS[i]})</b> ${esc(c)}<div class="ko small">${esc((q.choicesKo || [])[i] || '')}</div></div>`).join('')}</div>` : ''}
+  </div>`;
+}
+if (window.Listen) Listen.onChange(() => { const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
 
 function updateTimer() {
   const el = document.querySelector('[data-timer]');
@@ -313,7 +341,8 @@ Views.result = () => {
       <summary><span>${ok ? '⭕' : '❌'}</span> <b>${i + 1}.</b> ${PART_INFO[q.part].name} <span class="muted small">내 답 ${p != null ? LETTERS[p] : '-'} · 정답 ${LETTERS[q.answer]}</span></summary>
       <div class="review-body">
         ${set.passage ? `<details><summary>지문 보기</summary><div class="passage-body">${renderPassage(set, q)}</div></details>` : ''}
-        <div class="qtext">${esc(q.q)}</div>
+        <div class="qtext">${esc(q.q)}${isListenPart(q.part) && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>
+        ${isListenPart(q.part) ? `<button class="btn ghost small" data-act="lplayq" data-arg="${q.id}">🔊 다시 듣기</button>` : ''}
         <ol class="opts">${q.choices.map((ch, j) => `<li class="${j === q.answer ? 'ans' : j === p ? 'mine' : ''}">(${LETTERS[j]}) ${esc(ch)}</li>`).join('')}</ol>
         ${explainBox(q, p)}
       </div></details>`;
@@ -327,7 +356,7 @@ Views.result = () => {
     <div class="row wrap">
       ${wrongIds.length ? `<button class="btn primary" data-act="retrySession">❌ 틀린 ${wrongIds.length}문제 다시 풀기</button>` : ''}
       ${S.part ? `<button class="btn" data-act="setup" data-arg="${S.part}">같은 파트 더 풀기</button>` : ''}
-      <button class="btn" data-act="nav" data-arg="#/reading">리딩 메뉴</button>
+      ${isListenPart(S.part) ? '<button class="btn" data-act="nav" data-arg="#/listening">리스닝 메뉴</button>' : '<button class="btn" data-act="nav" data-arg="#/reading">리딩 메뉴</button>'}
     </div>
     <h2>문제별 해설 <span class="small muted">(눌러서 펼치기)</span></h2>
     ${rows}`;
@@ -343,7 +372,7 @@ Views.wrong = () => {
       <section class="card empty">오답이 없어요 🎉<br><span class="muted">문제를 틀리면 자동으로 여기에 모이고, 다시 맞히면 사라집니다.</span></section>`;
     return;
   }
-  const groups = [5, 6, 7].map(p => {
+  const groups = [2, 5, 6, 7].map(p => {
     const list = ids.filter(id => Q[id].part === p);
     if (!list.length) return '';
     return `<h2>${PART_INFO[p].name} · ${PART_INFO[p].title} <span class="muted small">${list.length}문제</span>
@@ -447,7 +476,7 @@ Views.stats = () => {
   Object.values(d.attempts).forEach(a => { n += a.n; c += a.c; });
   const days = Object.keys(d.daily).length;
 
-  const partBars = [5, 6, 7].map(p => {
+  const partBars = [2, 5, 6, 7].map(p => {
     const st = partStat(p);
     return hbar(`${PART_INFO[p].name} ${PART_INFO[p].title}`, st.acc, `${st.solved}/${st.total}문제`);
   }).join('');
@@ -562,8 +591,24 @@ function hbar(label, acc, sub) {
    리스닝 (2단계 예정) / 설정
    ============================================================ */
 Views.listening = () => {
-  $view.innerHTML = `<header class="page-head"><h1>🎧 리스닝</h1></header>
-    <section class="card empty">리스닝(Part 1~4)은 리딩 완성 후 2단계에서 추가됩니다.<br><span class="muted">음성 재생 · 받아쓰기 · 스크립트 보기 기능을 계획하고 있어요.</span></section>`;
+  const cards = LISTEN_PARTS.map(p => {
+    if (!PART_INFO[p]) {
+      const [ico, title, desc] = LISTEN_SOON[p];
+      return `<div class="card part soon-part"><div class="part-top"><span class="ico">${ico}</span><span class="badge">Part ${p}</span></div>
+        <b>${title}</b><span class="muted">${desc}</span><span class="small muted">🛠 준비 중</span></div>`;
+    }
+    const info = PART_INFO[p], st = partStat(p);
+    const prog = st.total ? Math.round(st.solved / st.total * 100) : 0;
+    return `<button class="card part" data-act="setup" data-arg="${p}">
+      <div class="part-top"><span class="ico">${info.icon}</span><span class="badge">${info.name}</span></div>
+      <b>${info.title}</b><span class="muted">${info.desc}</span>
+      <div class="bar"><i style="width:${prog}%"></i></div>
+      <span class="small muted">${st.solved} / ${st.total}문제 풀이 · 정답률 ${st.acc == null ? '-' : st.acc + '%'}</span>
+    </button>`;
+  }).join('');
+  $view.innerHTML = `
+    <header class="page-head"><h1>🎧 리스닝</h1><p class="muted">기기의 영어 목소리(미국·영국·호주·캐나다)로 들려줍니다. 소리를 켜 주세요.</p></header>
+    <section class="grid2">${cards}</section>`;
 };
 
 Views.settings = () => {
@@ -759,6 +804,7 @@ const Actions = {
   nav: h => go(h),
   setup: p => go('#/setup/' + p),
   quick(kind) {
+    if (kind === 'p2') return startSession({ title: 'Part 2 · 10문제', part: 2, qids: pickQids(2, 10), mode: 'practice' });
     if (kind === 'p5') startSession({ title: 'Part 5 · 10문제', part: 5, qids: pickQids(5, 10), mode: 'practice' });
     else if (kind === 'mock') startSession({ title: '미니 모의고사', part: 0, qids: [...pickQids(5, 10), ...pickQids(6, 1), ...pickQids(7, 2)], mode: 'test' });
     else if (kind === 'wrong') Actions.retryWrong('all');
@@ -770,9 +816,13 @@ const Actions = {
     const mode = document.querySelector('input[name=mode]:checked').value;
     startSession({ title: `${PART_INFO[p].name} · ${PART_INFO[p].title}`, part: p, qids: pickQids(p, cnt), mode });
   },
+  lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else Listen.part2(q); },
+  lplayq(id) { Listen.part2(Q[id]); },
+  lrate(v) { Store.setSetting('listenRate', +v); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
   pick(i) {
     i = +i;
     const id = curId(), q = Q[id];
+    if (i >= q.choices.length) return;
     if (S.mode === 'test') { S.picks[id] = i; renderSession(); return; }
     if (S.checked[id]) return;
     S.picks[id] = i; S.checked[id] = true;

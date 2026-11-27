@@ -393,3 +393,13 @@ mark { background: var(--hl); padding: 0 2px; border-radius: 3px; color: var(--h
 .col:focus, .cal-cell:focus { outline: none; }
 /* 단어 > 오늘의 단어 시작/이어서 하기 버튼 가운데 */
 .btn[data-act="wstart"] { display: flex; width: fit-content; margin-left: auto; margin-right: auto; }
+
+/* 리스닝 */
+.listen-box { margin-bottom: 14px; }
+.listen-guide { font-weight: 700; margin-bottom: 10px; }
+.listen-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.script { margin-top: 14px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); font-family: var(--font-en); }
+.script-q, .script-a { margin-top: 8px; }
+.script-a.ans { color: var(--ok); }
+.script .ko { color: var(--muted); font-family: var(--font-ui); }
+.soon-part { opacity: .55; display: flex; flex-direction: column; gap: 2px; }

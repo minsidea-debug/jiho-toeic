@@ -8,6 +8,7 @@
   - Part 6 빈칸은 지문 안 `[[1]]`~`[[4]]`, 문제의 `blank` 번호와 일치
   - `answer`는 0~3 (A~D), 보기는 항상 4개, `id`는 중복 금지(학습 기록 키)
   - 문제는 직접 창작(ETS 기출 복제 금지)
+- `data/part1.js` – 리스닝 Part 1 (사진 묘사). 세트 1개 = 문제 1개, `img`(images/part1/, StockSnap CC0 · 출처 CREDITS.md)·`voice`·`choicesKo`. 사진 추가 시 sw.js FILES 에도 추가
 - `data/part2.js` – 리스닝 Part 2 (질의응답) 문제. 리딩과 같은 `TOEIC_SETS`(세트 1개 = 문제 1개, part 2), 보기 3개, `voices`(US/UK/AU/CA)·`choicesKo` 추가. 형식은 파일 상단 주석
 - `data/part3.js` – 리스닝 Part 3 (짧은 대화). 세트 = 대화 1개 + 문제 3개, `script`([화자, 대사])·`ko`·`voices`·`graphic`(표 문제). Part 4 도 같은 형식(`data/part4.js`, 화자 1명)
 - `js/listen.js` – 리스닝 음성(Web Speech API, 파일 없음). `Listen.part2(q)` / `Listen.stop()`, 속도 `settings.listenRate`. 조사·계획: `sources/LISTENING_PLAN.md`
@@ -29,7 +30,7 @@
 
 ## 계획
 1. 리딩(Part 5·6·7) ✔
-2. 리스닝(Part 1~4, 기기 음성) ← 현재 (Part 2·3·4 완료 → 1)
+2. 리스닝(Part 1~4, 기기 음성) ← 현재 (Part 1~4 완료)
 3. 갤럭시 S24: GitHub Pages 등에 올려 "홈 화면에 추가"(PWA). 기록은 설정 > 백업으로 이동
 
 ## 확인 방법

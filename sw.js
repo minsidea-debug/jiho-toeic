@@ -1,9 +1,9 @@
 /* 오프라인 실행용 서비스워커 (인터넷 주소로 열었을 때만 동작)
    파일을 수정하면 VERSION 숫자를 올려주세요. */
-const VERSION = 'jiho-toeic-202611271500'; // VERSION:AUTO
+const VERSION = 'jiho-toeic-202611280000'; // VERSION:AUTO
 const FILES = [
   './', './index.html', './css/style.css', './data/quotes.js', './js/store.js', './js/sound.js', './js/listen.js', './js/app.js', './js/words.js',
-  './data/part2.js', './data/part3.js', './data/part4.js', './data/part5.js', './data/part6.js', './data/part7.js',
+  './data/part1.js', './data/part2.js', './data/part3.js', './data/part4.js', './data/part5.js', './data/part6.js', './data/part7.js',
   './data/words_elem.js', './data/words_middle.js', './data/words_high.js', './data/words_univ.js', './data/word_synonyms.js', './data/word_ipa.js',
   './data/words_loader.js',
   // WORDS:START
@@ -108,6 +108,8 @@ const FILES = [
   './data/words/univ_34.js',
   './data/words/univ_35.js',
   // WORDS:END
+  './images/part1/p1-01.jpg', './images/part1/p1-02.jpg', './images/part1/p1-03.jpg', './images/part1/p1-04.jpg', './images/part1/p1-05.jpg', './images/part1/p1-06.jpg', './images/part1/p1-07.jpg',
+  './images/part1/p1-08.jpg', './images/part1/p1-09.jpg', './images/part1/p1-10.jpg', './images/part1/p1-11.jpg', './images/part1/p1-12.jpg', './images/part1/p1-13.jpg', './images/part1/p1-14.jpg',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];
 self.addEventListener('install', e => {

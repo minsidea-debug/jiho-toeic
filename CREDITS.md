@@ -38,3 +38,24 @@ CC BY-SA 4.0 조건에 따라, 위 목록을 바탕으로 만든 단어 데이�
 - 출처: [open-dict-data/ipa-dict](https://github.com/open-dict-data/ipa-dict) `en_US` (미국식 IPA)
 - 라이선스: MIT License, Copyright (c) 2016 dohliam
 - 앱에 맞게 첫 번째 발음만 골라 쓰고, `ɹ`·`ɫ` 를 `r`·`l` 로 바꿔 표기했습니다.
+
+## 리스닝 Part 1 사진 (images/part1/)
+- 모두 [StockSnap](https://stocksnap.io) 사진, 라이선스 **CC0 1.0 (퍼블릭 도메인)** — 출처 표기 의무는 없지만 감사의 뜻으로 적어 둡니다.
+- 앱에 맞게 가로 800px로 줄이고 다시 압축했습니다. 문제 문장은 직접 창작했습니다.
+
+| 파일 | 원본 | 촬영자 |
+|---|---|---|
+| p1-01.jpg | https://stocksnap.io/photo/laptop-typing-YBKJ1G35EX | LinkedIn Sales Navigator |
+| p1-02.jpg | https://stocksnap.io/photo/business-man-BOBKRBMPVF | Direct Media |
+| p1-03.jpg | https://stocksnap.io/photo/business-man-DUJOCEA5HW | Direct Media |
+| p1-04.jpg | https://stocksnap.io/photo/working-women-DC7JUJKYTQ | Kristin Hardwick |
+| p1-05.jpg | https://stocksnap.io/photo/people-man-RDHCSMZPFF | Roman Kraft |
+| p1-06.jpg | https://stocksnap.io/photo/barista-pouring-MD4L58LL1E | Burst |
+| p1-07.jpg | https://stocksnap.io/photo/street-road-Z44OU0YBB6 | Brandon Wong |
+| p1-08.jpg | https://stocksnap.io/photo/boat-ship-0JUYCJ6O5E | AJ Montpetit |
+| p1-09.jpg | https://stocksnap.io/photo/woman-blue-CXXONEIULG | Bruce Mars |
+| p1-10.jpg | https://stocksnap.io/photo/crosswalk-intersection-FRIV8HI9GP | Peter Miranda |
+| p1-11.jpg | https://stocksnap.io/photo/books-bookshop-K4BCIJPVOE | Suzy Hazelwood |
+| p1-12.jpg | https://stocksnap.io/photo/woman-shop-E1KVAKFMUK | Burst |
+| p1-13.jpg | https://stocksnap.io/photo/man-entering-7GXMY2JMR4 | Bruce Mars |
+| p1-14.jpg | https://stocksnap.io/photo/art-gallery-7B52AC0C5F | Ryan McGuire |

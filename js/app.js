@@ -14,6 +14,7 @@ const Q = {};      // 문제ID → 문제 (setId, part 포함)
 
 const PART_INFO = {
   2: { name: 'Part 2', title: '질의응답', desc: '질문 듣고 알맞은 응답 고르기 (보기 3개)', icon: '💬', sec: 25, listen: true },
+  3: { name: 'Part 3', title: '짧은 대화', desc: '2~3명의 대화 듣고 3문제 (표 문제 포함)', icon: '👥', sec: 40, listen: true, unit: '대화' },
   5: { name: 'Part 5', title: '단문 빈칸 채우기', desc: '한 문장 속 빈칸 – 문법·어휘', icon: '✏️', sec: 30 },
   6: { name: 'Part 6', title: '장문 빈칸 채우기', desc: '지문 속 빈칸 4개 – 문장 삽입 포함', icon: '📄', sec: 45 },
   7: { name: 'Part 7', title: '독해', desc: '이메일·기사·메시지 읽고 답하기', icon: '📰', sec: 60 },
@@ -21,7 +22,9 @@ const PART_INFO = {
 const LETTERS = ['A', 'B', 'C', 'D'];
 const isListenPart = p => !!(PART_INFO[p] && PART_INFO[p].listen);
 const LISTEN_PARTS = [1, 2, 3, 4];
-const LISTEN_SOON = { 1: ['📷', '사진 묘사', '사진을 보고 알맞은 설명 고르기'], 3: ['👥', '짧은 대화', '2~3명의 대화 듣고 3문제'], 4: ['📢', '짧은 담화', '안내방송·메시지 듣고 3문제'] };
+// 문제에 맞는 소리 재생: Part 2 = 질문+응답, Part 3·4 = 대화·담화 세트
+const playFor = q => (q.part === 2 ? Listen.part2(q) : Listen.talk(SETS[q.setId]));
+const LISTEN_SOON = { 1: ['📷', '사진 묘사', '사진을 보고 알맞은 설명 고르기'], 4: ['📢', '짧은 담화', '안내방송·메시지 듣고 3문제'] };
 
 /* ---------- 도우미 ---------- */
 const $view = document.getElementById('view');
@@ -159,6 +162,7 @@ Views.setup = arg => {
   const info = PART_INFO[p];
   const counts = p === 5 || p === 2
     ? [['10', '10문제'], ['20', '20문제'], ['all', '전체']]
+    : info.unit ? [['3', `${info.unit} 3개`], ['5', `${info.unit} 5개`], ['all', `전체 ${info.unit}`]]
     : [['1', '지문 1개'], ['2', '지문 2개'], ['all', '전체 지문']];
   $view.innerHTML = `
     <header class="page-head"><h1>${info.icon} ${info.name} · ${info.title}</h1><p class="muted">${info.desc}</p></header>
@@ -241,11 +245,14 @@ function renderSession() {
   const answered = Object.keys(test ? S.picks : S.checked).length;
 
   const listen = isListenPart(q.part), reveal = listen && !test && checked;
+  const hideChoices = listen && q.part === 2;   // Part 2 는 보기도 소리로만 (Part 3·4 는 문제·보기가 글로 보임)
+  // Part 3·4 대본은 그 대화의 문제를 모두 푼 뒤에 공개 (먼저 보이면 나머지 답이 보이니까)
+  const setDone = !test && set.questions.every(x => S.checked[x.id] || !S.qids.includes(x.id));
   const choices = q.choices.map((c, i) => {
     let cls = 'choice';
     if (!test && checked) { if (i === q.answer) cls += ' correct'; else if (i === pick) cls += ' wrong'; }
     else if (pick === i) cls += ' picked';
-    const label = listen && !reveal ? `<span class="muted">응답 (${LETTERS[i]})</span>` : `<span>${esc(c)}</span>`;
+    const label = hideChoices && !reveal ? `<span class="muted">응답 (${LETTERS[i]})</span>` : `<span>${esc(c)}</span>`;
     return `<button class="${cls}" data-act="pick" data-arg="${i}" ${!test && checked ? 'disabled' : ''}><span class="letter">${LETTERS[i]}</span>${label}</button>`;
   }).join('');
 
@@ -278,7 +285,7 @@ function renderSession() {
       ${passage}
       <section class="card qpanel">
         <div class="qnum">${PART_INFO[q.part].name} · 문제 ${S.idx + 1} / ${n}</div>
-        ${listen ? listenBox(q, reveal) : `<div class="qtext">${esc(q.q)}</div>`}
+        ${!listen ? `<div class="qtext">${esc(q.q)}</div>` : q.part === 2 ? listenBox(q, reveal) : talkBox(set, q, setDone, checked && !test)}
         <div class="choices">${choices}</div>
         ${!test && checked ? explainBox(q, pick) : ''}
         <div class="qnav">${nav}</div>
@@ -286,7 +293,9 @@ function renderSession() {
     </div>`;
   updateTimer();
   // 리스닝: 새 문제로 넘어오면 자동 재생 (같은 문제를 다시 그릴 때는 재생 안 함)
-  if (listen && S.playedId !== id) { S.playedId = id; Listen.part2(q); }
+  // (Part 3·4 는 같은 대화의 다음 문제로 넘어갈 때 다시 재생하지 않음)
+  const playKey = q.part === 2 ? id : q.setId;
+  if (listen && S.playedId !== playKey) { S.playedId = playKey; playFor(q); }
   const cur = document.querySelector('.blank.current');
   if (cur) cur.scrollIntoView({ block: 'nearest' });
 }
@@ -304,6 +313,34 @@ function listenBox(q, reveal) {
     ${reveal ? `<div class="script"><div class="small muted">📜 대본</div><div class="script-q"><b>Q.</b> ${esc(q.q)}<div class="ko small">${esc(q.ko || '')}</div></div>
       ${q.choices.map((c, i) => `<div class="script-a ${i === q.answer ? 'ans' : ''}"><b>(${LETTERS[i]})</b> ${esc(c)}<div class="ko small">${esc((q.choicesKo || [])[i] || '')}</div></div>`).join('')}</div>` : ''}
   </div>`;
+}
+function ctrlRow() {
+  const r = Store.data.settings.listenRate || 1;
+  return `<div class="listen-ctrl">
+      <button class="btn primary" data-act="lplay">${Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'}</button>
+      <div class="tabs small-tabs">${RATES.map(([v, t]) => `<button class="${v === r ? 'on' : ''}" data-act="lrate" data-arg="${v}">${t}</button>`).join('')}</div>
+    </div>`;
+}
+function graphicTable(g) {
+  if (!g) return '';
+  return `<div class="graphic"><div class="graphic-title">${esc(g.title)}</div><table class="tbl">${g.rows.map((r, i) =>
+    `<tr>${r.map(c => i === 0 ? `<th>${esc(c)}</th>` : `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+}
+const SPK = { W: '여자', M: '남자', W2: '여자 2', M2: '남자 2' };
+function scriptBox(set) {
+  return `<div class="script"><div class="small muted">📜 대본${set.title ? ' · ' + esc(set.title) : ''}</div>
+    ${set.script.map(([who, t], i) => `<div class="script-a"><b>${SPK[who] || who}:</b> ${esc(t)}<div class="ko small">${esc((set.ko || [])[i] || '')}</div></div>`).join('')}</div>`;
+}
+// Part 3·4: 재생 버튼 · 표(있으면) · 문제 글 · (모두 풀면) 대본
+function talkBox(set, q, setDone, showKo) {
+  const no = set.questions.indexOf(q) + 1;
+  return `<div class="listen-box">
+    <div class="listen-guide">🎧 ${q.part === 3 ? '대화' : '담화'}를 듣고 문제에 답하세요. <span class="muted small">(이 ${q.part === 3 ? '대화' : '담화'}의 ${no} / ${set.questions.length}번째 문제)</span></div>
+    ${ctrlRow()}
+    ${graphicTable(set.graphic)}
+    ${setDone ? scriptBox(set) : ''}
+  </div>
+  <div class="qtext">${esc(q.q)}${showKo && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>`;
 }
 if (window.Listen) Listen.onChange(() => { const b = document.querySelector('[data-act="lplay"]'); if (b) b.textContent = Listen.isPlaying() ? '⏹ 멈추기' : '▶ 다시 듣기'; });
 
@@ -343,6 +380,7 @@ Views.result = () => {
         ${set.passage ? `<details><summary>지문 보기</summary><div class="passage-body">${renderPassage(set, q)}</div></details>` : ''}
         <div class="qtext">${esc(q.q)}${isListenPart(q.part) && q.ko ? `<div class="ko small">${esc(q.ko)}</div>` : ''}</div>
         ${isListenPart(q.part) ? `<button class="btn ghost small" data-act="lplayq" data-arg="${q.id}">🔊 다시 듣기</button>` : ''}
+        ${set.script ? `<details><summary>대본 보기</summary>${graphicTable(set.graphic)}${scriptBox(set)}</details>` : ''}
         <ol class="opts">${q.choices.map((ch, j) => `<li class="${j === q.answer ? 'ans' : j === p ? 'mine' : ''}">(${LETTERS[j]}) ${esc(ch)}</li>`).join('')}</ol>
         ${explainBox(q, p)}
       </div></details>`;
@@ -372,7 +410,7 @@ Views.wrong = () => {
       <section class="card empty">오답이 없어요 🎉<br><span class="muted">문제를 틀리면 자동으로 여기에 모이고, 다시 맞히면 사라집니다.</span></section>`;
     return;
   }
-  const groups = [2, 5, 6, 7].map(p => {
+  const groups = [2, 3, 5, 6, 7].map(p => {
     const list = ids.filter(id => Q[id].part === p);
     if (!list.length) return '';
     return `<h2>${PART_INFO[p].name} · ${PART_INFO[p].title} <span class="muted small">${list.length}문제</span>
@@ -476,7 +514,7 @@ Views.stats = () => {
   Object.values(d.attempts).forEach(a => { n += a.n; c += a.c; });
   const days = Object.keys(d.daily).length;
 
-  const partBars = [2, 5, 6, 7].map(p => {
+  const partBars = [2, 3, 5, 6, 7].map(p => {
     const st = partStat(p);
     return hbar(`${PART_INFO[p].name} ${PART_INFO[p].title}`, st.acc, `${st.solved}/${st.total}문제`);
   }).join('');
@@ -816,8 +854,8 @@ const Actions = {
     const mode = document.querySelector('input[name=mode]:checked').value;
     startSession({ title: `${PART_INFO[p].name} · ${PART_INFO[p].title}`, part: p, qids: pickQids(p, cnt), mode });
   },
-  lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else Listen.part2(q); },
-  lplayq(id) { Listen.part2(Q[id]); },
+  lplay() { const q = Q[curId()]; if (Listen.isPlaying()) Listen.stop(); else playFor(q); },
+  lplayq(id) { playFor(Q[id]); },
   lrate(v) { Store.setSetting('listenRate', +v); document.querySelectorAll('[data-act="lrate"]').forEach(b => b.classList.toggle('on', +b.dataset.arg === +v)); },
   pick(i) {
     i = +i;

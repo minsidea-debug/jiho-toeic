@@ -3,6 +3,7 @@
    - 그 나라 목소리가 없으면 다른 영어 목소리 + 높낮이를 바꿔 화자를 구분
    - 속도: Store.data.settings.listenRate (0.8 / 1 / 1.2)
    Listen.part2(q)  질문 → (A) (B) (C) 응답을 차례로 읽기
+   Listen.talk(set) Part 3·4 대화·담화 대본 읽기 (화자별 목소리·높낮이)
    Listen.stop()    멈추기 */
 (function () {
   const LANG = { US: 'en-US', UK: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
@@ -30,14 +31,14 @@
     const next = () => {
       if (my !== token) return;
       if (i >= lines.length) { setPlaying(false); return; }
-      const [accent, text, pause, who] = lines[i++];
+      const [accent, text, pause, who, pitch] = lines[i++];
       const u = new SpeechSynthesisUtterance(text);
       const v = pickVoice(accent, who || 0);
       u.lang = LANG[accent] || 'en-US';
       if (v) u.voice = v;
       u.rate = 0.95 * rate();
       // 같은 목소리밖에 없을 때도 화자가 구분되게 높낮이를 다르게
-      u.pitch = who ? 1.2 : 0.95;
+      u.pitch = pitch || (who ? 1.2 : 0.95);
       u.onend = u.onerror = () => { if (my === token) setTimeout(next, pause || 500); };
       speechSynthesis.speak(u);
     };
@@ -54,8 +55,19 @@
     q.choices.forEach((c, i) => lines.push([aa, ['A', 'B', 'C', 'D'][i] + '. ' + c, 800, 1]));
     playLines(lines);
   }
+  // Part 3·4: 대화/담화 세트 읽기. 화자 W·W2 = 여자(높게), M·M2 = 남자(낮게)
+  const PITCH = { W: 1.15, W2: 1.3, M: 0.8, M2: 0.95 };
+  function talk(set) {
+    const order = {};
+    const lines = set.script.map(([who, text]) => {
+      if (!(who in order)) order[who] = Object.keys(order).length;
+      const accent = (set.voices || {})[who] || 'US';
+      return [accent, text, 600, order[who], PITCH[who] || 1];
+    });
+    playLines(lines);
+  }
   // 목소리 목록은 늦게 준비되는 기기가 있어 미리 한 번 불러 둠
   if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
 
-  window.Listen = { part2, stop, playLines, isPlaying: () => playing, onChange: f => listeners.push(f) };
+  window.Listen = { part2, talk, stop, playLines, isPlaying: () => playing, onChange: f => listeners.push(f) };
 })();

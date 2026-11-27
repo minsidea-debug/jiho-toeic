@@ -13,7 +13,7 @@
 - `data/part3.js` – 리스닝 Part 3 (짧은 대화). 세트 = 대화 1개 + 문제 3개, `script`([화자, 대사])·`ko`·`voices`·`graphic`(표 문제). Part 4 도 같은 형식(`data/part4.js`, 화자 1명)
 - `audio/*.mp3` + `data/audio_index.js` – 리스닝 AI 음성(Kokoro). **Part 1~4 대본을 고치거나 문제를 추가하면** `node sources/tts/dump_sets.js > sources/tts/sets.json` → `sources/tts/.venv/Scripts/python.exe sources/tts/make_audio.py` (고친 문제는 해당 mp3 를 지우고 실행). 파일이 없으면 기기 음성으로 자동 대체
 - 리스닝 추가 묶음 `data/part1_NN.js`~`part4_NN.js` (Part 1 140 · Part 2·3·4 각 300문제): `data/lc_util.js` 의 `LC.p1/p2/talks` 로 등록 (정답 위치를 문제 번호로 고르게 섞고 해설 속 (A)~(D)도 맞춤). 문제 ID = 줄/세트 순서이므로 **순서 바꾸기·중간 삽입 금지**, 새 묶음은 뒤에 추가 후 index.html·sw.js 에 등록
-- `data/lc_packs.js` – 리스닝 문제 묶음(기본·추가 1~3) 파일 목록·용량. **리스닝 문제나 음성을 바꾸면 `node sources/build_packs.js` 로 다시 만들 것**. 기본은 바로 사용, 추가는 내려받기(용량 팝업 → LTE/5G면 한 번 더 확인) 후 사용. 받은 파일은 캐시 `jiho-media`(sw.js가 앱 업데이트 때도 유지)
+- `data/lc_packs.js` – 리스닝 문제 묶음(기본·추가 1~3) 파일 목록·용량. **리스닝 문제나 음성을 바꾸면 `node sources/build_packs.js` 로 다시 만들 것**. 기본은 바로 사용, 추가는 내려받기(용량 팝업 → LTE/5G면 한 번 더 확인) 후 사용. 받은 파일은 캐시 `jiho-media`(sw.js가 앱 업데이트 때도 유지). **이미 있는 음성·사진을 다시 만들면 sw.js 의 `MEDIA_STALE` 에 경로를 넣어** 폰의 예전 저장본을 지우게 할 것
 - 음성 생성은 GPU(RTX 3080, onnxruntime-gpu) 우선 — CPU 대비 약 3.4배 빠름. `--cpu` 로 CPU만 사용 가능
 - `data/listen_directions.js` – 실전 모드 파트 안내(Directions) 영어·한국어 (음성 audio/dir-*.mp3)
 - `js/listen.js` – 리스닝 음성(Web Speech API, 파일 없음). `Listen.part2(q)` / `Listen.stop()`, 속도 `settings.listenRate`. 조사·계획: `sources/LISTENING_PLAN.md`

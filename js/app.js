@@ -15,6 +15,7 @@ const Q = {};      // 문제ID → 문제 (setId, part 포함)
 const PART_INFO = {
   2: { name: 'Part 2', title: '질의응답', desc: '질문 듣고 알맞은 응답 고르기 (보기 3개)', icon: '💬', sec: 25, listen: true },
   3: { name: 'Part 3', title: '짧은 대화', desc: '2~3명의 대화 듣고 3문제 (표 문제 포함)', icon: '👥', sec: 40, listen: true, unit: '대화' },
+  4: { name: 'Part 4', title: '짧은 담화', desc: '안내방송·메시지·광고 듣고 3문제 (표 문제 포함)', icon: '📢', sec: 40, listen: true, unit: '담화' },
   5: { name: 'Part 5', title: '단문 빈칸 채우기', desc: '한 문장 속 빈칸 – 문법·어휘', icon: '✏️', sec: 30 },
   6: { name: 'Part 6', title: '장문 빈칸 채우기', desc: '지문 속 빈칸 4개 – 문장 삽입 포함', icon: '📄', sec: 45 },
   7: { name: 'Part 7', title: '독해', desc: '이메일·기사·메시지 읽고 답하기', icon: '📰', sec: 60 },
@@ -24,7 +25,7 @@ const isListenPart = p => !!(PART_INFO[p] && PART_INFO[p].listen);
 const LISTEN_PARTS = [1, 2, 3, 4];
 // 문제에 맞는 소리 재생: Part 2 = 질문+응답, Part 3·4 = 대화·담화 세트
 const playFor = q => (q.part === 2 ? Listen.part2(q) : Listen.talk(SETS[q.setId]));
-const LISTEN_SOON = { 1: ['📷', '사진 묘사', '사진을 보고 알맞은 설명 고르기'], 4: ['📢', '짧은 담화', '안내방송·메시지 듣고 3문제'] };
+const LISTEN_SOON = { 1: ['📷', '사진 묘사', '사진을 보고 알맞은 설명 고르기'] };
 
 /* ---------- 도우미 ---------- */
 const $view = document.getElementById('view');
@@ -410,7 +411,7 @@ Views.wrong = () => {
       <section class="card empty">오답이 없어요 🎉<br><span class="muted">문제를 틀리면 자동으로 여기에 모이고, 다시 맞히면 사라집니다.</span></section>`;
     return;
   }
-  const groups = [2, 3, 5, 6, 7].map(p => {
+  const groups = [2, 3, 4, 5, 6, 7].map(p => {
     const list = ids.filter(id => Q[id].part === p);
     if (!list.length) return '';
     return `<h2>${PART_INFO[p].name} · ${PART_INFO[p].title} <span class="muted small">${list.length}문제</span>
@@ -514,7 +515,7 @@ Views.stats = () => {
   Object.values(d.attempts).forEach(a => { n += a.n; c += a.c; });
   const days = Object.keys(d.daily).length;
 
-  const partBars = [2, 3, 5, 6, 7].map(p => {
+  const partBars = [2, 3, 4, 5, 6, 7].map(p => {
     const st = partStat(p);
     return hbar(`${PART_INFO[p].name} ${PART_INFO[p].title}`, st.acc, `${st.solved}/${st.total}문제`);
   }).join('');
